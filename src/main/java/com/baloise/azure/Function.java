@@ -45,8 +45,7 @@ public class Function {
     private static String getJwtFromHeader(final HttpRequestMessage<Optional<String>> request) {
         final Map<String, String> headers = request.getHeaders();
         final String authHeader = headers.get("authorization");
-        final String[] authHeaderParts = authHeader.split(" ");
-        return authHeaderParts[1];
+        return authHeader == null ? "" : authHeader.split(" ")[1];
     }
     
 }
