@@ -80,9 +80,7 @@
 					<!-- function app name -->
 					<appName>${functionAppName}</appName>
 					<!-- function app resource group -->
-					<resourceGroup>BizDevOps</resourceGroup>
-					<!-- function app service plan name -->
-					<appServicePlanName>ASP-BizDevOps-823d</appServicePlanName>
+					<resourceGroup>deop-rg-prod-euw-git-ps-funorg</resourceGroup>
 					<!-- function app region-->
 					<!-- refers
 					https://github.com/microsoft/azure-maven-plugins/wiki/Azure-Functions:-Configuration-Details#supported-regions
