@@ -1,10 +1,14 @@
 package com.baloise.azure;
 
+import static java.lang.String.format;
+import static java.util.stream.Collectors.joining;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
@@ -41,8 +45,19 @@ public class Function {
 			return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
 					.body("Please pass a name on the query string or in the request body").build();
 		} else {
-			return request.createResponseBuilder(HttpStatus.OK).body(String.format("Hello, %s. \n Vault contains \n%s", name, callMicrosoftGraphMeEndpoint())).build();
+			return request.createResponseBuilder(HttpStatus.OK).body(String.format("Hello, %s. \n %s", name, 
+					//callMicrosoftGraphMeEndpoint()
+					listEnv() + listProps()
+					)).build();
 		}
+	}
+
+	private String listProps() {
+		return "\nProps\n\n"+ System.getProperties().entrySet().stream().map(e -> format("%s = %s", e.getKey(), e.getValue())).collect(joining("\n"));
+	}
+
+	private String listEnv() {
+		return "\nEnv\n\n"+System.getenv().entrySet().stream().map(e -> format("%s = %s", e.getKey(), e.getValue())).collect(joining("\n"));
 	}
 
 	private String callMicrosoftGraphMeEndpoint(){
