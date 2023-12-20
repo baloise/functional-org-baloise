@@ -26,7 +26,7 @@ class ClientCredentialGrant {
     		ConfidentialClientApplication app = ConfidentialClientApplication.builder(
     				AzureProperties.clientId(),
     				ClientCredentialFactory.createFromSecret(Vault.getSecret(AzureProperties.clientSecretName())))
-    				.authority(AzureProperties.authority())
+    				//.authority(AzureProperties.authority())
     				.build();	
     		CompletableFuture<IAuthenticationResult> future = app.acquireToken(clientCredentialParam);
     		cache = future.get();    		
