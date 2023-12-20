@@ -6,6 +6,7 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
 import java.util.Optional;
 
+import com.keyvault.secrets.quickstart.Vault;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -38,7 +39,7 @@ public class Function {
 			return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
 					.body("Please pass a name on the query string or in the request body").build();
 		} else {
-			return request.createResponseBuilder(HttpStatus.OK).body(String.format("Hello, %s. \n You are \n%s", name, callMicrosoftGraphMeEndpoint())).build();
+			return request.createResponseBuilder(HttpStatus.OK).body(String.format("Hello, %s. \n Vault contains \n%s", name, Vault.list())).build();
 		}
 	}
 
