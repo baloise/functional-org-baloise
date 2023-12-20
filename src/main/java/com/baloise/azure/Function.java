@@ -6,7 +6,6 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
 import java.util.Optional;
 
-import com.keyvault.secrets.quickstart.Vault;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -25,6 +24,9 @@ public class Function {
 	 * "curl" command in bash: 1. curl -d "HTTP Body" {your host}/api/Hello 2. curl
 	 * "{your host}/api/Hello?name=HTTP%20Query"
 	 */
+	
+	ClientCredentialGrant clientCredentialGrant = new ClientCredentialGrant();
+	
 	@FunctionName("Hello")
 	public HttpResponseMessage run(@HttpTrigger(name = "req", methods = { HttpMethod.GET,
 			HttpMethod.POST }, authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
@@ -39,27 +41,25 @@ public class Function {
 			return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
 					.body("Please pass a name on the query string or in the request body").build();
 		} else {
-			return request.createResponseBuilder(HttpStatus.OK).body(String.format("Hello, %s. \n Vault contains \n%s", name, Vault.list())).build();
+			return request.createResponseBuilder(HttpStatus.OK).body(String.format("Hello, %s. \n Vault contains \n%s", name, callMicrosoftGraphMeEndpoint())).build();
 		}
 	}
 
-	private java.net.http.HttpResponse<String> callMicrosoftGraphMeEndpoint(){
+	private String callMicrosoftGraphMeEndpoint(){
 
-		java.net.http.HttpResponse<String> response = null;
 		try {
 
 			java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-					.uri(URI.create("https://graph.microsoft.com/v1.0/me")).timeout(Duration.ofMinutes(2))
+					.uri(URI.create("https://graph.microsoft.com/v1.0/me")).timeout(Duration.ofSeconds(7))
 					.header("Content-Type", "application/json").header("Accept", "application/json")
-					// .header("Authorization", "Bearer " + authResult.accessToken())
+					.header("Authorization", "Bearer " + clientCredentialGrant.getToken())
 					.build();
 
 			final HttpClient client = HttpClient.newHttpClient();
-			response = client.send(request, BodyHandlers.ofString());
+			return client.send(request, BodyHandlers.ofString()).body();
 		} catch (Exception e) {
 			e.printStackTrace();
+			return e.getMessage();
 		}
-
-		return response;
 	}
 }
