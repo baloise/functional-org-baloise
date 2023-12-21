@@ -6,7 +6,7 @@ name: Build and deploy Java project to Azure Function App - functional-org-baloi
 on:
   push:
     branches:
-      - main
+      - lastSuccess
   workflow_dispatch:
 
 env:
