@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.keyvault.secrets.quickstart.Vault;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -37,15 +38,29 @@ public class Function {
 			final ExecutionContext context) {
 		context.getLogger().info("Java HTTP trigger processed a request.");
 
-		if(request.getQueryParameters().get("dump")!=null) {
+		if(request.getQueryParameters().containsKey("dump")) {
 			return request.createResponseBuilder(HttpStatus.OK).body(
 					listEnv() + listProps()
 					).build();
-		} else {
+		} 
+		if(request.getQueryParameters().containsKey("name")) {
+			return request.createResponseBuilder(HttpStatus.OK).body( 
+					"Hello "+request.getQueryParameters().get("name")
+					).build();
+		}
+		if(request.getQueryParameters().containsKey("vault")) {
+			return request.createResponseBuilder(HttpStatus.OK).body( 
+					Vault.list()
+					).build();
+		}
+		if(request.getQueryParameters().containsKey("graph")) {
 			return request.createResponseBuilder(HttpStatus.OK).body( 
 					callMicrosoftGraphMeEndpoint()
 					).build();
 		}
+		return request.createResponseBuilder(HttpStatus.OK).body( 
+					"Hi there. What's your ?name="
+					).build();
 	}
 
 	private String listProps() {
