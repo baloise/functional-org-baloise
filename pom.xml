@@ -40,6 +40,11 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>com.microsoft.graph</groupId>
+			<artifactId>microsoft-graph</artifactId>
+			<version>5.77.0</version>
+		</dependency>
+		<dependency>
 			<groupId>com.microsoft.azure.functions</groupId>
 			<artifactId>azure-functions-java-library</artifactId>
 			<version>${azure.functions.java.library.version}</version>
@@ -52,12 +57,12 @@
 		<dependency>
 			<groupId>com.azure</groupId>
 			<artifactId>azure-security-keyvault-secrets</artifactId>
-			<version>4.2.3</version>
+			<version>4.7.3</version>
 		</dependency>
 		<dependency>
 			<groupId>com.azure</groupId>
 			<artifactId>azure-identity</artifactId>
-			<version>1.2.0</version>
+			<version>1.11.1</version>
 		</dependency>
 		<!-- Test -->
 		<dependency>
