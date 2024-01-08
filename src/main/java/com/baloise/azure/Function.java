@@ -8,8 +8,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
+import com.azure.identity.ManagedIdentityCredential;
+import com.azure.identity.ManagedIdentityCredentialBuilder;
+import com.keyvault.secrets.quickstart.Graph;
 import com.keyvault.secrets.quickstart.Vault;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
@@ -19,6 +21,8 @@ import com.microsoft.azure.functions.HttpStatus;
 import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
+import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
+import com.microsoft.graph.models.Group;
 
 /**
  * Azure Functions with HTTP Trigger.
@@ -55,7 +59,11 @@ public class Function {
 		}
 		if(request.getQueryParameters().containsKey("graph")) {
 			return request.createResponseBuilder(HttpStatus.OK).body( 
-					callMicrosoftGraphMeEndpoint()
+					new Graph(new TokenCredentialAuthProvider(new ManagedIdentityCredentialBuilder()
+							.clientId(AzureProperties.balgrpidprodfunorgClientId())
+							.resourceId(AzureProperties.balgrpidprodfunorgId())
+							.build()))
+					.getTeams().stream().map(g-> g.displayName).collect(joining("<br>"))
 					).build();
 		}
 		return request.createResponseBuilder(HttpStatus.OK).body( 
@@ -70,22 +78,5 @@ public class Function {
 	private String listEnv() {
 		return "\nEnv\n\n"+System.getenv().entrySet().stream().map(e -> format("%s = %s", e.getKey(), e.getValue())).collect(joining("\n"));
 	}
-
-	private String callMicrosoftGraphMeEndpoint(){
-
-		try {
-
-			java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-					.uri(URI.create("https://graph.microsoft.com/v1.0/me")).timeout(Duration.ofSeconds(7))
-					.header("Content-Type", "application/json").header("Accept", "application/json")
-					.header("Authorization", "Bearer " + clientCredentialGrant.getToken())
-					.build();
-
-			final HttpClient client = HttpClient.newHttpClient();
-			return client.send(request, BodyHandlers.ofString()).body();
-		} catch (Exception e) {
-			e.printStackTrace();
-			return e.getMessage();
-		}
-	}
+	
 }
