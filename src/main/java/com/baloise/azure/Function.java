@@ -32,7 +32,7 @@ public class Function {
 	
 	ClientCredentialGrant clientCredentialGrant = new ClientCredentialGrant();
 	
-	@FunctionName("Hello")
+	@FunctionName("V1")
 	public HttpResponseMessage run(@HttpTrigger(name = "req", methods = { HttpMethod.GET,
 			HttpMethod.POST }, authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
 			final ExecutionContext context) {

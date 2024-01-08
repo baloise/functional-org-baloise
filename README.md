@@ -8,3 +8,4 @@ https://learn.microsoft.com/en-us/azure-stack/asdk/asdk-cli?view=azs-2306&tabs=w
 https://learn.microsoft.com/en-us/azure/azure-functions/scripts/functions-cli-create-function-app-github-continuous
 
 
+https://functional-org-baloise.azurewebsites.net/api/V1
