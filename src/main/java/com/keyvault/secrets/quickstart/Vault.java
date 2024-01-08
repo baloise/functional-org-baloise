@@ -23,7 +23,7 @@ public class Vault {
 	static SecretClient secretClient = new SecretClientBuilder()
 			.vaultUrl(keyVaultUri)
 			.credential(new DefaultAzureCredentialBuilder()
-					.managedIdentityClientId(AzureProperties.clientId())
+					.managedIdentityClientId(AzureProperties.balgrpidprodfunorgClientId())
 					.build())
 			.httpLogOptions(opts())
 			//.httpClient(createClient())

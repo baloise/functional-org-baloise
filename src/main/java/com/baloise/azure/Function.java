@@ -60,7 +60,7 @@ public class Function {
 		if(request.getQueryParameters().containsKey("graph")) {
 			return request.createResponseBuilder(HttpStatus.OK).body( 
 					new Graph(new TokenCredentialAuthProvider(new ManagedIdentityCredentialBuilder()
-							.clientId(AzureProperties.balgrpidprodfunorgClientId())
+							.clientId(AzureProperties.clientId())
 							.build()))
 					.getTeams().stream().map(g-> g.displayName).collect(joining("<br>"))
 					).build();
