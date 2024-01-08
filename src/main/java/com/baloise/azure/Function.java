@@ -3,14 +3,9 @@ package com.baloise.azure;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpResponse.BodyHandlers;
-import java.time.Duration;
 import java.util.Optional;
 
-import com.azure.identity.ManagedIdentityCredential;
-import com.azure.identity.ManagedIdentityCredentialBuilder;
+import com.azure.identity.ClientSecretCredentialBuilder;
 import com.keyvault.secrets.quickstart.Graph;
 import com.keyvault.secrets.quickstart.Vault;
 import com.microsoft.azure.functions.ExecutionContext;
@@ -22,7 +17,6 @@ import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
-import com.microsoft.graph.models.Group;
 
 /**
  * Azure Functions with HTTP Trigger.
@@ -34,7 +28,17 @@ public class Function {
 	 * "{your host}/api/Hello?name=HTTP%20Query"
 	 */
 	
-	ClientCredentialGrant clientCredentialGrant = new ClientCredentialGrant();
+	Vault vault = new Vault();
+	Graph lazygraph = null;
+	Graph graph() {
+		if(lazygraph == null) {
+			lazygraph = new Graph(new TokenCredentialAuthProvider( new ClientSecretCredentialBuilder()
+					.authorityHost(AzureProperties.authority())
+					.tenantId(AzureProperties.tenantId()).clientId(AzureProperties.clientId())
+					.clientSecret(vault.getSecret(AzureProperties.clientSecretName(), true)).build()));
+		}
+		return lazygraph;
+	}
 	
 	@FunctionName("V1")
 	public HttpResponseMessage run(@HttpTrigger(name = "req", methods = { HttpMethod.GET,
@@ -54,15 +58,19 @@ public class Function {
 		}
 		if(request.getQueryParameters().containsKey("vault")) {
 			return request.createResponseBuilder(HttpStatus.OK).body( 
-					Vault.list()
+					vault.list()
 					).build();
 		}
 		if(request.getQueryParameters().containsKey("graph")) {
+			
+			
 			return request.createResponseBuilder(HttpStatus.OK).body( 
-					new Graph(new TokenCredentialAuthProvider(new ManagedIdentityCredentialBuilder()
-							.clientId(AzureProperties.clientId())
-							.build()))
-					.getTeams().stream().map(g-> g.displayName).collect(joining("<br>"))
+//					new Graph(new TokenCredentialAuthProvider(new ManagedIdentityCredentialBuilder()
+//							.clientId(AzureProperties.clientId())
+//							.build()))
+//					.getTeams().stream().map(g-> g.displayName).collect(joining("<br>"))
+					
+					graph().getTeams().stream().map(g-> g.displayName).collect(joining("<br>"))
 					).build();
 		}
 		return request.createResponseBuilder(HttpStatus.OK).body( 
