@@ -41,8 +41,9 @@ public class Function {
 	}
 	
 	@FunctionName("V1")
-	public HttpResponseMessage run(@HttpTrigger(name = "req", methods = { HttpMethod.GET,
-			HttpMethod.POST }, authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
+	public HttpResponseMessage run(
+			@HttpTrigger(name = "req", methods = { HttpMethod.GET, HttpMethod.POST }, authLevel = AuthorizationLevel.ANONYMOUS) 
+			HttpRequestMessage<Optional<String>> request,
 			final ExecutionContext context) {
 		context.getLogger().info("Java HTTP trigger processed a request.");
 
@@ -64,13 +65,10 @@ public class Function {
 		if(request.getQueryParameters().containsKey("graph")) {
 			
 			
-			return request.createResponseBuilder(HttpStatus.OK).body( 
-//					new Graph(new TokenCredentialAuthProvider(new ManagedIdentityCredentialBuilder()
-//							.clientId(AzureProperties.clientId())
-//							.build()))
-//					.getTeams().stream().map(g-> g.displayName).collect(joining("<br>"))
-					
-					graph().getTeams().stream().map(g-> g.displayName).collect(joining("<br>"))
+			return request.createResponseBuilder(HttpStatus.OK)
+					.header("Content-Type","text/html; charset=UTF-8")
+					.body( 					
+					graph().getTeams().stream().map(g-> g.displayName).collect(joining("<br>", "<html>", "</html>"))
 					).build();
 		}
 		return request.createResponseBuilder(HttpStatus.OK).body( 
