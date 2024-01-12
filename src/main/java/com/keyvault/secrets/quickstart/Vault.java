@@ -30,7 +30,11 @@ public class Vault {
 		if(cache && value != null) {
 			return value;
 		}
-		value = secretClient.getSecret(name).getValue();
+		final String propKey = "vault."+name; 
+		value = System.getProperty(propKey,System.getenv(propKey));
+		if(value == null) {
+			value = secretClient.getSecret(name).getValue();
+		}
 		this.cache.put(name, value);
 		return value;
 	}
