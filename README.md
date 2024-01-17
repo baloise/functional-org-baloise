@@ -9,3 +9,10 @@ https://learn.microsoft.com/en-us/azure/azure-functions/scripts/functions-cli-cr
 
 
 https://functional-org-baloise.azurewebsites.net/api/V1
+
+https://github.com/baloise/functional-org-baloise/
+
+https://portal.azure.com/#view/WebsitesExtension/FunctionMenuBlade/~/monitor/resourceId/%2Fsubscriptions%2F07a656a5-d78c-4256-b752-8649af6303eb%2FresourceGroups%2Fdeop-rg-prod-euw-git-ps-funorg%2Fproviders%2FMicrosoft.Web%2Fsites%2Ffunctional-org-baloise%2Ffunctions%2FV1
+
+
+mvn clean package azure-functions:run

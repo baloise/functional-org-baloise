@@ -1,16 +1,20 @@
 package com.keyvault.secrets.quickstart;
 
+import static java.lang.String.format;
+
 import java.util.ArrayList;
 import java.util.List;
 
+import com.baloise.funorg.Team;
 import com.microsoft.graph.authentication.IAuthenticationProvider;
-import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.http.BaseCollectionPage;
 import com.microsoft.graph.http.BaseCollectionRequestBuilder;
 import com.microsoft.graph.http.BaseEntityCollectionRequest;
 import com.microsoft.graph.http.BaseRequestBuilder;
 import com.microsoft.graph.http.ICollectionResponse;
+import com.microsoft.graph.models.DirectoryObject;
 import com.microsoft.graph.models.Group;
+import com.microsoft.graph.models.User;
 import com.microsoft.graph.options.QueryOption;
 import com.microsoft.graph.requests.GraphServiceClient;
 
@@ -28,7 +32,10 @@ public class Graph {
 	}
 	
 	public List<Group> getTeams() {
-		return readAll(graphClient.groups().buildRequest(new QueryOption("$filter", "startswith(displayName,'F-AAD-TEAM-')")));
+		return getTeams("");
+	}
+	public List<Group> getTeams(String filter) {
+		return readAll(graphClient.groups().buildRequest(new QueryOption("$filter", format("startswith(displayName,'%s%s')", Team.PREFIX, filter))));
 	}
 	
 	private <T, T2 extends ICollectionResponse<T>, T3 extends BaseCollectionPage<T, ? extends BaseRequestBuilder<T>>> List<T> readAll(BaseEntityCollectionRequest<T, T2, T3> request) {
@@ -43,6 +50,11 @@ public class Graph {
 			readAll(all, (BaseEntityCollectionRequest<T, T2, T3>) builder.buildRequest());
 		}
 		return all;
+	}
+
+	public List<DirectoryObject> getGroupMembers(String id) {
+		return readAll(graphClient.groups().byId(id).members()
+				.buildRequest());
 	}
 
 }

@@ -1,21 +1,33 @@
 package com.baloise.azure;
 
+import static java.util.Arrays.asList;
+import static java.util.Arrays.stream;
+import static java.util.Objects.isNull;
 import static java.util.UUID.randomUUID;
 import static java.util.logging.Logger.getLogger;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Scanner;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
@@ -24,10 +36,81 @@ import com.microsoft.azure.functions.HttpResponseMessage;
 import com.microsoft.azure.functions.HttpResponseMessage.Builder;
 import com.microsoft.azure.functions.HttpStatus;
 import com.microsoft.azure.functions.HttpStatusType;
+import com.microsoft.azure.functions.annotation.BindingName;
+import com.microsoft.azure.functions.annotation.FunctionName;
+import com.microsoft.azure.functions.annotation.HttpTrigger;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 public class DevServer {
+	
+	private class ParameterMapping {
+		
+		private Parameter[] parameters;
+		Map<String, SimpleEntry<Integer, String>> bindings = new HashMap<>();
+
+		public ParameterMapping(Method method) {
+			parameters = method.getParameters();
+			for (Parameter p: parameters) {
+				HttpTrigger trigger = p.getAnnotation(HttpTrigger.class);
+				if(trigger != null) {
+					int i = 1;
+					for (String pathElement: parsePath(trigger.route())) {
+						if(pathElement.startsWith("{") && pathElement.endsWith("}")) {
+							pathElement=pathElement.substring(1, pathElement.length()-1);
+							String[] nameAndDefault = pathElement.split("=", 2);
+							bindings.put(nameAndDefault[0], new SimpleEntry<Integer, String>(i, nameAndDefault.length >1 ? nameAndDefault[1] : null));
+						}
+						i++;
+					}
+					break;
+				}
+			}
+		}
+		
+		public Object[] map(LinkedList<String> path, HttpExchange exg) {
+			return stream(parameters).map(p->{
+				if(p.getType().isAssignableFrom(ExecutionContextImpl.class)) {
+					return new ExecutionContextImpl(exg);
+				}
+				if(p.getType().isAssignableFrom(HttpRequestMessageImpl.class)) {
+					return new HttpRequestMessageImpl(exg);
+				}
+				BindingName bindingName = p.getAnnotation(BindingName.class);
+				if(bindingName != null) {
+					SimpleEntry<Integer, String> binding = bindings.get(bindingName.value());
+					if(binding == null) {
+						throw new IllegalArgumentException("Binding not found for "+bindingName);
+					}
+					return path.size() > binding.getKey() ? path.get(binding.getKey()) : binding.getValue();
+				}
+				throw new IllegalArgumentException("Don't know how to map parameter "+p);
+			}).toArray();
+		}
+		
+	}
+	
+	private Map<String, Method> functionMapping = new HashMap<>();
+	private Map<Class<?>, Object> instanceMapping = new HashMap<>();
+	private Map<Method, ParameterMapping> parameterMappings = new HashMap<>();
+	
+	public DevServer(Class<?> ... functionClasses) {
+		stream(functionClasses).distinct()
+		.map(clazz ->{
+			return stream(clazz.getMethods())
+				.mapMulti((method, consumer)-> {
+					FunctionName functionName = method.getAnnotation(FunctionName.class);
+					if(!isNull(functionName)) {
+						parameterMappings.put(method, new ParameterMapping(method));
+						consumer.accept(new SimpleEntry<String, Method>(functionName.value(), method));
+					} 
+				})
+				.collect(Collectors.toList());
+		})
+		.flatMap(Collection::stream)
+		.forEach(e -> functionMapping.put(((SimpleEntry<String, Method>)e).getKey(), ((SimpleEntry<String, Method>)e).getValue()));
+	}
+
 	private final class ExecutionContextImpl implements ExecutionContext {
 		private String invocationId = randomUUID().toString();
 		private HttpExchange exg;
@@ -96,7 +179,7 @@ public class DevServer {
 		public Map<String, String> getHeaders() {
 			if(headers == null) {
 				headers = new HashMap<>();
-				exg.getRequestHeaders().forEach((k,vs)-> headers.put(k, vs.getFirst()));
+				exg.getRequestHeaders().forEach((k,vs)-> headers.put(k, vs.get(0)));
 			}
 			return headers;
 		}
@@ -177,27 +260,41 @@ public class DevServer {
 	String name = getClass().getSimpleName();
 	Logger logger = getLogger(name);
 
-	public static void main(String args[]) throws IOException {
-		new DevServer().start();
-	}
+	public void start() throws IOException {
+		HttpServer server = HttpServer.create(new InetSocketAddress(7071), 0);
 
-	private void start() throws IOException {
-		Function function = new Function();
-
-		HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
-
-		server.createContext("/", exg -> {
-			
-			ResponseBuilderImpl.HttpResponseMessageImpl resp = (ResponseBuilderImpl.HttpResponseMessageImpl) function.run(new HttpRequestMessageImpl(exg), new ExecutionContextImpl(exg));
-			byte response[] = resp.getBody().toString().getBytes("UTF-8");
-			resp.getHeaders().forEach((k,v)-> exg.getResponseHeaders().add(k,v));
-			exg.sendResponseHeaders(resp.getStatusCode(), response.length);
-
-			OutputStream out = exg.getResponseBody();
-			out.write(response);
-			out.close();
+		server.createContext("/api", exg -> {
+			try(OutputStream out = exg.getResponseBody()) {
+				LinkedList<String> path = parsePath(exg.getRequestURI().toString());
+				path.pop(); // api
+				Method method = functionMapping.get(path.peek());
+				ResponseBuilderImpl.HttpResponseMessageImpl resp = (ResponseBuilderImpl.HttpResponseMessageImpl) method.invoke(getInstance(method), parameterMappings.get(method).map(path, exg));
+				byte response[] = resp.getBody().toString().getBytes("UTF-8");
+				resp.getHeaders().forEach((k,v)-> exg.getResponseHeaders().add(k,v));
+				exg.sendResponseHeaders(resp.getStatusCode(), response.length);
+				out.write(response);
+			} catch (Throwable t) {
+				logger.log(Level.WARNING, t.getLocalizedMessage(), t);
+			}
 		});
 
 		server.start();
+	}
+
+	private LinkedList<String> parsePath(String string) {
+		String[] pathAndQuery = string.split(Pattern.quote("?"),2);
+		LinkedList<String> path = new LinkedList<String>(asList(pathAndQuery[0].split("/")));
+		path.pop(); // empty
+		return path;
+	}
+
+	private Object getInstance(Method method) throws Exception {
+		Class<?> declaringClass = method.getDeclaringClass();
+		Object object = instanceMapping.get(declaringClass);
+		if(object == null) {
+			object = declaringClass.getDeclaredConstructor().newInstance();
+			instanceMapping.put(declaringClass, object);
+		}
+		return object;
 	}
 }
