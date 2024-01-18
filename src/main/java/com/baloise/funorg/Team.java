@@ -1,6 +1,11 @@
 package com.baloise.funorg;
 
-import java.util.Scanner;
+import static java.lang.String.format;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.joining;
+
+import java.util.Arrays;
+import java.util.regex.Pattern;
 
 public record Team(String unit, String name,boolean internal) {
 	public final static String PREFIX = "F-AAD-TEAM-";
@@ -8,11 +13,12 @@ public record Team(String unit, String name,boolean internal) {
 	private final static String INTERNAL = "INTERNAL";
 	
 	public static Team parse(String entitlement) {
-		try(Scanner scan = new Scanner(entitlement)){
-			return new Team(
-			scan.skip(PREFIX).useDelimiter(SEPERATOR).next(),
-			scan.next(),
-			INTERNAL.equals(scan.next()));
-		}
+		String[] tokens = entitlement.split(Pattern.quote(SEPERATOR));
+		if(tokens.length <6) throw new IllegalArgumentException(format("%s dos not contains the minimum of 5 seperators: %s",entitlement, SEPERATOR));
+		return new Team(
+				stream(Arrays.copyOfRange(tokens, 3, tokens.length-2)).collect(joining(SEPERATOR)), 
+				tokens[tokens.length-2], 
+				INTERNAL.equals(tokens[tokens.length-1])
+				);
 	}
 }

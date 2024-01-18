@@ -3,6 +3,7 @@ package com.baloise.azure;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -70,29 +71,30 @@ public class FunctionalOrgEndpoint {
 			context.getLogger().log(Level.INFO, "unit "+ unit);
 			context.getLogger().log(Level.INFO, "team "+ team);
 			
-			if(!"null".equals(team)) {
+			if(!"null".equals(team)) {				
+				Map<String, Map<String,Object>> name2team = new HashMap<>();
 				
+				for (Group group : graph().getTeams(unit+"-"+team)) {
+					Team t = Team.parse(group.displayName);
+					Map<String, Object> tmp = name2team.get(t.name());
+					if(tmp== null) {
+						tmp = Map.of(
+								"name", t.name(),
+								"unit", t.unit(),
+								"url", getPath(request)+"/"+t.name(),
+								"members" , loadAndMapMembers(group, t.internal())
+								);
+						name2team.put(t.name(), tmp);
+					} else {
+						List<Map<String, Object>> members = (List<Map<String, Object>>) tmp.get("members");
+						members.addAll(loadAndMapMembers(group, t.internal()));
+					}
+				}
 				return request.createResponseBuilder(HttpStatus.OK)
 						.header("Content-Type","application/json; charset=UTF-8")
 						.body( 					
 								objectMapper.writeValueAsString(
-										Map.of("teams",
-												graph().getTeams(unit+"-"+team).stream()
-												
-												.map(g -> {
-												Team t = Team.parse(g.displayName);
-												List<DirectoryObject> group = graph().getGroupMembers(g.id);
-												return Map.of(
-														"entitlement", g.displayName,
-														"name", t.name(),
-														"unit", t.unit(),
-														"url", request.getUri(),
-														"members" , group.stream().map(u-> mapUser(u,t.internal())).collect(Collectors.toList())
-														);}
-														)
-														.distinct()
-														.collect(Collectors.toList())
-												))
+										Map.of("teams", name2team.values()))
 								).build();
 			}
 			
@@ -108,7 +110,7 @@ public class FunctionalOrgEndpoint {
 												Map.of(
 														"name", t.name(),
 														"unit", t.unit(),
-														"url", format("%s/%s", request.getUri(), t.name())
+														"url", format("%s/%s/%s", getPath(request), t.unit(),t.name())
 														)
 														)
 													.distinct()
@@ -142,7 +144,16 @@ public class FunctionalOrgEndpoint {
 			throw t;
 		}
 	}
+
+	private List<Map<String, Object>> loadAndMapMembers(Group group, boolean internal) {
+		return graph().getGroupMembers(group.id).stream().map(u-> mapUser(u,internal)).collect(Collectors.toList());
+	}
 	
+	private String getPath(HttpRequestMessage<?> request) {
+		String uri = request.getUri().toString();
+		return uri.substring(0, uri.lastIndexOf('/'));
+	}
+
 	@FunctionName("dump")
 	public HttpResponseMessage dump(
 			final ExecutionContext context,
@@ -194,7 +205,7 @@ public class FunctionalOrgEndpoint {
 		return "\nEnv\n\n"+System.getenv().entrySet().stream().map(e -> format("%s = %s", e.getKey(), e.getValue())).collect(joining("\n"));
 	}
 
-	private Map<Object, Object> mapUser(DirectoryObject dirObj, boolean internal) {
+	private Map<String, Object> mapUser(DirectoryObject dirObj, boolean internal) {
 		User u = (User) dirObj;
 		return Map.of(
 				"preferredLanguage", 	notNull(u.preferredLanguage),

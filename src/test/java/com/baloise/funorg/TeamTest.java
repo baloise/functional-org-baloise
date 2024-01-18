@@ -29,7 +29,7 @@ class TeamTest {
 		Team team = Team.parse("F-AAD-TEAM-A-UNIT-ATEAM-INTERNAL");
 		assertEquals("A-UNIT", team.unit());
 		assertEquals("ATEAM", team.name());
-		assertFalse(team.internal());
+		assertTrue(team.internal());
 	}
 
 	
