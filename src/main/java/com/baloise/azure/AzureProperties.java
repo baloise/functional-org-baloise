@@ -2,6 +2,7 @@ package com.baloise.azure;
 
 import static java.lang.String.format;
 
+//TODO: how can we get rid of these hard coded properties?
 public class AzureProperties {
 	public final static String defaultScope() {return "https://graph.microsoft.com/.default";}
 	public final static String clientId() {return "408f3c69-c6ce-42dd-8a8e-144f5e1b994e";}
