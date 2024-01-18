@@ -14,7 +14,6 @@ import com.microsoft.graph.http.BaseRequestBuilder;
 import com.microsoft.graph.http.ICollectionResponse;
 import com.microsoft.graph.models.DirectoryObject;
 import com.microsoft.graph.models.Group;
-import com.microsoft.graph.models.User;
 import com.microsoft.graph.options.QueryOption;
 import com.microsoft.graph.requests.GraphServiceClient;
 

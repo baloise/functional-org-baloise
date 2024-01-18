@@ -9,7 +9,6 @@ import static java.util.logging.Logger.getLogger;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.net.InetSocketAddress;
@@ -71,7 +70,7 @@ public class DevServer {
 		public Object[] map(LinkedList<String> path, HttpExchange exg) {
 			return stream(parameters).map(p->{
 				if(p.getType().isAssignableFrom(ExecutionContextImpl.class)) {
-					return new ExecutionContextImpl(exg);
+					return new ExecutionContextImpl();
 				}
 				if(p.getType().isAssignableFrom(HttpRequestMessageImpl.class)) {
 					return new HttpRequestMessageImpl(exg);
@@ -94,6 +93,7 @@ public class DevServer {
 	private Map<Class<?>, Object> instanceMapping = new HashMap<>();
 	private Map<Method, ParameterMapping> parameterMappings = new HashMap<>();
 	
+	@SuppressWarnings("unchecked")
 	public DevServer(Class<?> ... functionClasses) {
 		stream(functionClasses).distinct()
 		.map(clazz ->{
@@ -113,11 +113,6 @@ public class DevServer {
 
 	private final class ExecutionContextImpl implements ExecutionContext {
 		private String invocationId = randomUUID().toString();
-		private HttpExchange exg;
-
-		public ExecutionContextImpl(HttpExchange exg) {
-			this.exg = exg;
-		}
 
 		@Override
 		public Logger getLogger() {
@@ -131,6 +126,7 @@ public class DevServer {
 
 		@Override
 		public String getFunctionName() {
+			//TODO return name from annotation
 			return name;
 		}
 	}

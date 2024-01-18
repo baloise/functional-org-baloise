@@ -68,74 +68,16 @@ public class FunctionalOrgEndpoint {
 			@BindingName("team") String team
 		) {
 		try {
-			context.getLogger().log(Level.INFO, "unit "+ unit);
-			context.getLogger().log(Level.INFO, "team "+ team);
-			
 			if(!"null".equals(team)) {				
-				Map<String, Map<String,Object>> name2team = new HashMap<>();
-				
-				for (Group group : graph().getTeams(unit+"-"+team)) {
-					Team t = Team.parse(group.displayName);
-					Map<String, Object> tmp = name2team.get(t.name());
-					if(tmp== null) {
-						tmp = Map.of(
-								"name", t.name(),
-								"unit", t.unit(),
-								"url", getPath(request)+"/"+t.name(),
-								"members" , loadAndMapMembers(group, t.internal())
-								);
-						name2team.put(t.name(), tmp);
-					} else {
-						List<Map<String, Object>> members = (List<Map<String, Object>>) tmp.get("members");
-						members.addAll(loadAndMapMembers(group, t.internal()));
-					}
-				}
-				return request.createResponseBuilder(HttpStatus.OK)
-						.header("Content-Type","application/json; charset=UTF-8")
-						.body( 					
-								objectMapper.writeValueAsString(
-										Map.of("teams", name2team.values()))
-								).build();
+				return createTeamResponse(request, unit, team);
 			}
 			
 			if(!"null".equals(unit)) {
-				return request.createResponseBuilder(HttpStatus.OK)
-						.header("Content-Type","application/json; charset=UTF-8")
-						.body( 					
-								objectMapper.writeValueAsString(
-										Map.of("teams",
-												graph().getTeams(unit+"-").stream()
-												.map(g -> Team.parse(g.displayName))									
-												.map(t -> 
-												Map.of(
-														"name", t.name(),
-														"unit", t.unit(),
-														"url", format("%s/%s/%s", getPath(request), t.unit(),t.name())
-														)
-														)
-													.distinct()
-													.collect(Collectors.toList())
-												))
-								).build();
+				return createUnitResponse(request, unit);
 			}
 			
-			return request.createResponseBuilder(HttpStatus.OK)
-					.header("Content-Type","application/json; charset=UTF-8")
-					.body( 					
-							objectMapper.writeValueAsString(
-									Map.of("units",
-											graph().getTeams().stream()
-											.map(g -> Team.parse(g.displayName))
-											.map(t -> 
-											Map.of(
-													"name", t.unit(),
-													"url", request.getUri()+"/"+ t.unit()
-													)
-													)
-											.distinct()
-											.collect(Collectors.toList())
-											))
-							).build();
+			return createRootResponse(request);
+			
 		} catch (JsonProcessingException e) {
 			context.getLogger().warning(e.getLocalizedMessage());
 			return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getLocalizedMessage()).build();
@@ -143,6 +85,76 @@ public class FunctionalOrgEndpoint {
 			context.getLogger().log(Level.WARNING, t.getLocalizedMessage(), t);
 			throw t;
 		}
+	}
+
+	private HttpResponseMessage createRootResponse(HttpRequestMessage<Optional<String>> request)
+			throws JsonProcessingException {
+		return request.createResponseBuilder(HttpStatus.OK)
+				.header("Content-Type","application/json; charset=UTF-8")
+				.body( 					
+						objectMapper.writeValueAsString(
+								Map.of("units",
+										graph().getTeams().stream()
+										.map(g -> Team.parse(g.displayName))
+										.map(t -> 
+										Map.of(
+												"name", t.unit(),
+												"url", request.getUri()+"/"+ t.unit()
+												)
+												)
+										.distinct()
+										.collect(Collectors.toList())
+										))
+						).build();
+	}
+
+	private HttpResponseMessage createUnitResponse(HttpRequestMessage<Optional<String>> request, String unit) throws JsonProcessingException {
+		return request.createResponseBuilder(HttpStatus.OK)
+				.header("Content-Type","application/json; charset=UTF-8")
+				.body( 					
+						objectMapper.writeValueAsString(
+								Map.of("teams",
+										graph().getTeams(unit+"-").stream()
+										.map(g -> Team.parse(g.displayName))									
+										.map(t -> 
+										Map.of(
+												"name", t.name(),
+												"unit", t.unit(),
+												"url", format("%s/%s/%s", getPath(request), t.unit(),t.name())
+												)
+												)
+											.distinct()
+											.collect(Collectors.toList())
+										))
+						).build();
+	}
+
+	private HttpResponseMessage createTeamResponse(HttpRequestMessage<Optional<String>> request, String unit, String team) throws JsonProcessingException {
+		Map<String, Map<String,Object>> name2team = new HashMap<>();
+		
+		for (Group group : graph().getTeams(unit+"-"+team)) {
+			Team t = Team.parse(group.displayName);
+			Map<String, Object> tmp = name2team.get(t.name());
+			if(tmp== null) {
+				tmp = Map.of(
+						"name", t.name(),
+						"unit", t.unit(),
+						"url", getPath(request)+"/"+t.name(),
+						"members" , loadAndMapMembers(group, t.internal())
+						);
+				name2team.put(t.name(), tmp);
+			} else {
+				@SuppressWarnings("unchecked")
+				List<Map<String, Object>> members = (List<Map<String, Object>>) tmp.get("members");
+				members.addAll(loadAndMapMembers(group, t.internal()));
+			}
+		}
+		return request.createResponseBuilder(HttpStatus.OK)
+				.header("Content-Type","application/json; charset=UTF-8")
+				.body( 					
+						objectMapper.writeValueAsString(
+								Map.of("teams", name2team.values()))
+						).build();
 	}
 
 	private List<Map<String, Object>> loadAndMapMembers(Group group, boolean internal) {
