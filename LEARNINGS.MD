@@ -1,3 +1,4 @@
+A function does not cost a thing ;-)
 The round trip is long (10 min), running locally does not help with integration / infrastructure problems
 Documentation is sparse and forums (stack overflow ) out dated
 Use Typed APIs for GraphQL
