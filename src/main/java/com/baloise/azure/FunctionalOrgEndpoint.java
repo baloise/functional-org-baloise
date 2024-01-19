@@ -15,8 +15,6 @@ import com.azure.identity.ClientSecretCredentialBuilder;
 import com.baloise.funorg.Team;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.keyvault.secrets.quickstart.Graph;
-import com.keyvault.secrets.quickstart.Vault;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;

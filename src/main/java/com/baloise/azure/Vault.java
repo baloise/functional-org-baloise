@@ -1,4 +1,4 @@
-package com.keyvault.secrets.quickstart;
+package com.baloise.azure;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -8,7 +8,6 @@ import com.azure.core.http.policy.HttpLogOptions;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.security.keyvault.secrets.SecretClient;
 import com.azure.security.keyvault.secrets.SecretClientBuilder;
-import com.baloise.azure.AzureProperties;
 
 public class Vault {
 	static String keyVaultName = "balgrpkvprodfunorg"; //System.getenv("KEY_VAULT_NAME");

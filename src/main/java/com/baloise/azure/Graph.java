@@ -1,4 +1,4 @@
-package com.keyvault.secrets.quickstart;
+package com.baloise.azure;
 
 import static java.lang.String.format;
 
