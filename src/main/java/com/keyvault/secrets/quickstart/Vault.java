@@ -2,14 +2,12 @@ package com.keyvault.secrets.quickstart;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import com.azure.core.http.policy.HttpLogDetailLevel;
 import com.azure.core.http.policy.HttpLogOptions;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.security.keyvault.secrets.SecretClient;
 import com.azure.security.keyvault.secrets.SecretClientBuilder;
-import com.azure.security.keyvault.secrets.models.SecretProperties;
 import com.baloise.azure.AzureProperties;
 
 public class Vault {
@@ -44,14 +42,5 @@ public class Vault {
 		opts.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
 		opts.setPrettyPrintBody(true);
 		return opts;
-	}
-
-	public String list() {
-    	return secretClient.listPropertiesOfSecrets().stream().map(SecretProperties::getName).collect(Collectors.joining(", "));
-    	
-    }
-    
-    public static void main(String[] args) {
-    	System.out.println(new Vault().list());
 	}
 }

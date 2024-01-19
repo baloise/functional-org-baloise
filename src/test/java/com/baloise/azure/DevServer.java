@@ -265,8 +265,8 @@ public class DevServer {
 				path.pop(); // api
 				Method method = functionMapping.get(path.peek());
 				ResponseBuilderImpl.HttpResponseMessageImpl resp = (ResponseBuilderImpl.HttpResponseMessageImpl) method.invoke(getInstance(method), parameterMappings.get(method).map(path, exg));
-				byte response[] = resp.getBody().toString().getBytes("UTF-8");
 				resp.getHeaders().forEach((k,v)-> exg.getResponseHeaders().add(k,v));
+				byte response[] = getResponseBytes(resp);
 				exg.sendResponseHeaders(resp.getStatusCode(), response.length);
 				out.write(response);
 			} catch (Throwable t) {
@@ -275,6 +275,14 @@ public class DevServer {
 		});
 
 		server.start();
+	}
+
+	private byte[] getResponseBytes(com.baloise.azure.DevServer.ResponseBuilderImpl.HttpResponseMessageImpl resp) throws UnsupportedEncodingException {
+		Object body = resp.getBody();
+		if(body instanceof byte[]) {
+			return (byte[]) body;
+		}
+		return body.toString().getBytes("UTF-8");
 	}
 
 	private LinkedList<String> parsePath(String string) {

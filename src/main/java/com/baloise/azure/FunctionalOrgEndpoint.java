@@ -3,6 +3,7 @@ package com.baloise.azure;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,16 +41,23 @@ public class FunctionalOrgEndpoint {
 	 * "{your host}/api/Hello?name=HTTP%20Query"
 	 */
 	
-	Vault vault = new Vault();
+	Vault lazyVault = null;
 	Graph lazygraph = null;
 	ObjectMapper objectMapper = new ObjectMapper();
+	
+	Vault vault() {
+		if(lazyVault == null) {
+			lazyVault = new Vault();
+		}
+		return lazyVault;
+	}
 	
 	Graph graph() {
 		if(lazygraph == null) {
 			lazygraph = new Graph(new TokenCredentialAuthProvider( new ClientSecretCredentialBuilder()
 					.authorityHost(AzureProperties.authority())
 					.tenantId(AzureProperties.tenantId()).clientId(AzureProperties.clientId())
-					.clientSecret(vault.getSecret(AzureProperties.clientSecretName(), true)).build()));
+					.clientSecret(vault().getSecret(AzureProperties.clientSecretName(), true)).build()));
 		}
 		return lazygraph;
 	}
@@ -68,6 +76,11 @@ public class FunctionalOrgEndpoint {
 			@BindingName("team") String team
 		) {
 		try {
+			
+			
+			if(!"null".equals(team) && "avatar".equals(unit)) {				
+				return createAvatarResponse(request, team);
+			}
 			if(!"null".equals(team)) {				
 				return createTeamResponse(request, unit, team);
 			}
@@ -78,13 +91,19 @@ public class FunctionalOrgEndpoint {
 			
 			return createRootResponse(request);
 			
-		} catch (JsonProcessingException e) {
+		} catch (IOException e) {
 			context.getLogger().warning(e.getLocalizedMessage());
 			return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getLocalizedMessage()).build();
 		} catch (Throwable t) {
 			context.getLogger().log(Level.WARNING, t.getLocalizedMessage(), t);
 			throw t;
 		}
+	}
+
+	private HttpResponseMessage createAvatarResponse(HttpRequestMessage<Optional<String>> request, String id) throws IOException {
+		return request.createResponseBuilder(HttpStatus.OK)
+				.header("Content-Type","image/jpeg")
+				.body(graph().avatar(id)).build();
 	}
 
 	private HttpResponseMessage createRootResponse(HttpRequestMessage<Optional<String>> request)
@@ -175,22 +194,6 @@ public class FunctionalOrgEndpoint {
 		return request.createResponseBuilder(HttpStatus.OK).body(
 				listEnv() + listProps()
 				).build();
-	}
-	
-	@FunctionName("vault")
-	public HttpResponseMessage vault(
-			final ExecutionContext context,
-			@HttpTrigger(name = "req", methods = { HttpMethod.GET, HttpMethod.POST }, authLevel = AuthorizationLevel.ANONYMOUS) 
-			HttpRequestMessage<Optional<String>> request
-			) {
-		try {
-			return request.createResponseBuilder(HttpStatus.OK).body( 
-					vault.list()
-					).build();
-		} catch (Throwable t) {
-			context.getLogger().log(Level.WARNING, t.getLocalizedMessage(), t);
-			throw t;
-		}
 	}
 	
 	@FunctionName("hello")

@@ -2,6 +2,8 @@ package com.keyvault.secrets.quickstart;
 
 import static java.lang.String.format;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,6 +43,7 @@ public class Graph {
 		return readAll(new ArrayList<>(), request);
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private <T, T2 extends ICollectionResponse<T>, T3 extends BaseCollectionPage<T, ? extends BaseRequestBuilder<T>>> List<T> readAll(List<T> all, BaseEntityCollectionRequest<T, T2, T3> request) {
 		T3 page = request.get();
 		all.addAll(page.getCurrentPage());
@@ -54,6 +57,12 @@ public class Graph {
 	public List<DirectoryObject> getGroupMembers(String id) {
 		return readAll(graphClient.groups().byId(id).members()
 				.buildRequest());
+	}
+	
+	public byte[] avatar(String id) throws IOException {
+		try(InputStream is = graphClient.users(id).photo().content().buildRequest().get()){
+			return is.readAllBytes();
+		}
 	}
 
 }
