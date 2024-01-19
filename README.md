@@ -15,4 +15,6 @@ https://github.com/baloise/functional-org-baloise/
 https://portal.azure.com/#view/WebsitesExtension/FunctionMenuBlade/~/monitor/resourceId/%2Fsubscriptions%2F07a656a5-d78c-4256-b752-8649af6303eb%2FresourceGroups%2Fdeop-rg-prod-euw-git-ps-funorg%2Fproviders%2FMicrosoft.Web%2Fsites%2Ffunctional-org-baloise%2Ffunctions%2FV1
 
 
+set -Dvault.408f3c69-c6ce-42dd-8a8e-144f5e1b994e-secret=<your secret here>
+
 mvn clean package azure-functions:run
