@@ -208,22 +208,6 @@ public class FunctionalOrgEndpoint {
 			throw t;
 		}
 	}
-	
-	@FunctionName("oxd")
-	public HttpResponseMessage oxd(
-			final ExecutionContext context,
-			@HttpTrigger(name = "req", methods = { HttpMethod.GET, HttpMethod.POST }, authLevel = AuthorizationLevel.ANONYMOUS) 
-			HttpRequestMessage<Optional<String>> request
-			) {
-		try {
-				return request.createResponseBuilder(HttpStatus.OK).body( 
-						"Hi Open X Day"
-						).build();
-		} catch (Throwable t) {
-			context.getLogger().log(Level.WARNING, t.getLocalizedMessage(), t);
-			throw t;
-		}
-	}
 
 	private String listProps() {
 		return "\nProps\n\n"+ System.getProperties().entrySet().stream().map(e -> format("%s = %s", e.getKey(), e.getValue())).collect(joining("\n"));
