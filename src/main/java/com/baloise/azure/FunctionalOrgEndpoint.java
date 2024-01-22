@@ -223,6 +223,7 @@ public class FunctionalOrgEndpoint {
 		return Map.of(
 				"preferredLanguage", 	notNull(u.preferredLanguage),
 				"officeLocation", 		notNull(u.officeLocation),
+				"displayName", 			notNull(u.displayName),
 				"givenName", 			notNull(u.givenName),
 				"surname", 				notNull(u.surname),
 				"mail", 				notNull(u.mail),
