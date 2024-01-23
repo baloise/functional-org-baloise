@@ -2,6 +2,7 @@ package com.baloise.funorg;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.text.ParseException;
@@ -17,7 +18,7 @@ class TeamTest {
 		assertEquals("DevOpsSystemTeam", team.name());
 		assertTrue(team.internal());
 	}
-	
+
 	@Test
 	public void parseFAADTEAMGITDevOpsSystemEXTERNAL() throws ParseException {
 		Team team = Team.parse("F-AAD-TEAM-OTHER-ATEAM-EXTERNAL");
@@ -25,7 +26,7 @@ class TeamTest {
 		assertEquals("ATEAM", team.name());
 		assertFalse(team.internal());
 	}
-	
+
 	@Test
 	public void parseFAADTEAMBCHITDevOpsComplianceINTERNAL() throws ParseException {
 		Team team = Team.parse("F-AAD-TEAM-A-UNIT-ATEAM-INTERNAL");
@@ -33,14 +34,13 @@ class TeamTest {
 		assertEquals("ATEAM", team.name());
 		assertTrue(team.internal());
 	}
-	
+
 	@Test
 	public void parseFAADTEAMBCHIntegrationSecurity() throws ParseException {
-		Team team = Team.parse("F-AAD-TEAM-BCH-Integration & Security");
-		assertEquals("BCH", team.unit());
-		assertEquals("Integration & Security", team.name());
-		assertTrue(team.internal());
+		Exception exception = assertThrows(ParseException.class, () -> {
+			Team.parse("F-AAD-TEAM-BCH-Integration & Security");
+		});
+		assertEquals("F-AAD-TEAM-BCH-Integration & Security dos not contains the minimum of 5 seperators: -", exception.getLocalizedMessage());
 	}
 
-	
 }
