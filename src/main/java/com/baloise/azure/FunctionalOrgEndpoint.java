@@ -4,9 +4,11 @@ import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -80,14 +82,14 @@ public class FunctionalOrgEndpoint {
 				return createAvatarResponse(request, team);
 			}
 			if(!"null".equals(team)) {				
-				return createTeamResponse(request, unit, team);
+				return createTeamResponse(request, context, unit, team);
 			}
 			
 			if(!"null".equals(unit)) {
-				return createUnitResponse(request, unit);
+				return createUnitResponse(request, context, unit);
 			}
 			
-			return createRootResponse(request);
+			return createRootResponse(request, context);
 			
 		} catch (IOException e) {
 			context.getLogger().warning(e.getLocalizedMessage());
@@ -104,7 +106,7 @@ public class FunctionalOrgEndpoint {
 				.body(graph().avatar(id)).build();
 	}
 
-	private HttpResponseMessage createRootResponse(HttpRequestMessage<Optional<String>> request)
+	private HttpResponseMessage createRootResponse(HttpRequestMessage<Optional<String>> request, ExecutionContext context)
 			throws JsonProcessingException {
 		return request.createResponseBuilder(HttpStatus.OK)
 				.header("Content-Type","application/json; charset=UTF-8")
@@ -112,7 +114,8 @@ public class FunctionalOrgEndpoint {
 						objectMapper.writeValueAsString(
 								Map.of("units",
 										graph().getTeams().stream()
-										.map(g -> Team.parse(g.displayName))
+										.map(g -> Team.parse(context.getLogger(), g.displayName))
+										.filter(Objects::nonNull)
 										.map(t -> 
 										Map.of(
 												"name", t.unit(),
@@ -125,14 +128,15 @@ public class FunctionalOrgEndpoint {
 						).build();
 	}
 
-	private HttpResponseMessage createUnitResponse(HttpRequestMessage<Optional<String>> request, String unit) throws JsonProcessingException {
+	private HttpResponseMessage createUnitResponse(HttpRequestMessage<Optional<String>> request, ExecutionContext context, String unit) throws JsonProcessingException {
 		return request.createResponseBuilder(HttpStatus.OK)
 				.header("Content-Type","application/json; charset=UTF-8")
 				.body( 					
 						objectMapper.writeValueAsString(
 								Map.of("teams",
 										graph().getTeams(unit+"-").stream()
-										.map(g -> Team.parse(g.displayName))									
+										.map(g -> Team.parse(context.getLogger(), g.displayName))
+										.filter(Objects::nonNull)
 										.map(t -> 
 										Map.of(
 												"name", t.name(),
@@ -146,24 +150,28 @@ public class FunctionalOrgEndpoint {
 						).build();
 	}
 
-	private HttpResponseMessage createTeamResponse(HttpRequestMessage<Optional<String>> request, String unit, String team) throws JsonProcessingException {
+	private HttpResponseMessage createTeamResponse(HttpRequestMessage<Optional<String>> request, ExecutionContext context, String unit, String team) throws JsonProcessingException {
 		Map<String, Map<String,Object>> name2team = new HashMap<>();
 		
 		for (Group group : graph().getTeams(unit+"-"+team)) {
-			Team t = Team.parse(group.displayName);
-			Map<String, Object> tmp = name2team.get(t.name());
-			if(tmp== null) {
-				tmp = Map.of(
-						"name", t.name(),
-						"unit", t.unit(),
-						"url", getPath(request)+"/"+t.name(),
-						"members" , loadAndMapMembers(group, t.internal())
-						);
-				name2team.put(t.name(), tmp);
-			} else {
-				@SuppressWarnings("unchecked")
-				List<Map<String, Object>> members = (List<Map<String, Object>>) tmp.get("members");
-				members.addAll(loadAndMapMembers(group, t.internal()));
+			try {
+				Team t = Team.parse(group.displayName);
+				Map<String, Object> tmp = name2team.get(t.name());
+				if(tmp== null) {
+					tmp = Map.of(
+							"name", t.name(),
+							"unit", t.unit(),
+							"url", getPath(request)+"/"+t.name(),
+							"members" , loadAndMapMembers(group, t.internal())
+							);
+					name2team.put(t.name(), tmp);
+				} else {
+					@SuppressWarnings("unchecked")
+					List<Map<String, Object>> members = (List<Map<String, Object>>) tmp.get("members");
+					members.addAll(loadAndMapMembers(group, t.internal()));
+				}
+			} catch (ParseException e) {
+				context.getLogger().log(Level.WARNING, e.getLocalizedMessage(), e);
 			}
 		}
 		return request.createResponseBuilder(HttpStatus.OK)
