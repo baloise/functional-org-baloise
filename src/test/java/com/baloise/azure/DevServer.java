@@ -1,5 +1,6 @@
 package com.baloise.azure;
 
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.Objects.isNull;
@@ -11,9 +12,12 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLDecoder;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Collection;
@@ -43,6 +47,12 @@ import com.sun.net.httpserver.HttpServer;
 
 public class DevServer {
 	
+	private static final int HTTP_PORT = 7071;
+	final String HTTP_HOST;
+	final String API_CONTEXT = "/api";
+	final String HTTP_HOST_API_CONTEXT;
+
+
 	private class ParameterMapping {
 		
 		private Parameter[] parameters;
@@ -95,6 +105,14 @@ public class DevServer {
 	
 	@SuppressWarnings("unchecked")
 	public DevServer(Class<?> ... functionClasses) {
+		String host = null;
+		try {
+			host = InetAddress.getLocalHost().getHostName();
+		} catch (UnknownHostException e) {
+			host = "127.0.0.1";
+		}
+		HTTP_HOST = format("http://%s:%s", host, HTTP_PORT);
+		HTTP_HOST_API_CONTEXT = HTTP_HOST+API_CONTEXT+"/";
 		stream(functionClasses).distinct()
 		.map(clazz ->{
 			return stream(clazz.getMethods())
@@ -142,7 +160,11 @@ public class DevServer {
 
 		@Override
 		public URI getUri() {
-			return exg.getRequestURI();
+			try {
+				return new URI(HTTP_HOST+exg.getRequestURI().toString());
+			} catch (URISyntaxException e) {
+				return exg.getRequestURI();
+			}
 		}
 
 		@Override
@@ -257,8 +279,8 @@ public class DevServer {
 	Logger logger = getLogger(name);
 
 	public void start() throws IOException {
-		HttpServer server = HttpServer.create(new InetSocketAddress(7071), 0);
-
+		HttpServer server = HttpServer.create(new InetSocketAddress(HTTP_PORT), 0);
+		functionMapping.keySet().stream().map(HTTP_HOST_API_CONTEXT::concat).forEach(System.out::println);
 		server.createContext("/api", exg -> {
 			try(OutputStream out = exg.getResponseBody()) {
 				LinkedList<String> path = parsePath(exg.getRequestURI().toString());
