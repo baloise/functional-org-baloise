@@ -7,6 +7,7 @@ import static java.util.stream.Collectors.joining;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
 import com.microsoft.azure.functions.HttpResponseMessage;
+import com.microsoft.azure.functions.HttpResponseMessage.Builder;
 import com.microsoft.azure.functions.HttpStatus;
 import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.BindingName;
@@ -104,9 +106,31 @@ public class FunctionalOrgEndpoint {
 	}
 
 	private HttpResponseMessage createAvatarResponse(HttpRequestMessage<Optional<String>> request, String id) throws IOException {
-		return request.createResponseBuilder(HttpStatus.OK)
+		byte[] avatar = graph().avatar(id);
+		String myETag = String.valueOf(Arrays.hashCode(avatar));		
+		String theirETag = ignoreKeyCase(request.getHeaders()).get("If-None-Match");
+		boolean sameEtag = Objects.equals(myETag, theirETag);
+		Builder response = request
+				.createResponseBuilder(sameEtag? HttpStatus.NOT_MODIFIED : HttpStatus.OK)
 				.header("Content-Type","image/jpeg")
-				.body(graph().avatar(id)).build();
+				.header("ETag",myETag);
+		if(!sameEtag) {
+			response = response
+					.header("Content-Length",String.valueOf(avatar.length))
+					.body(avatar);
+		}
+		return response.build();
+	}
+
+	private Map<String, String> ignoreKeyCase(Map<String, String> mixedMap) {
+		Map<String, String> lowMap = new HashMap<>() {
+			@Override
+			public String get(Object key) {
+				return super.get(key.toString().toLowerCase());
+			}
+		};
+		mixedMap.entrySet().stream().forEach(e->lowMap.put(e.getKey().toLowerCase(), e.getValue()));
+		return lowMap;
 	}
 
 	private HttpResponseMessage createRootResponse(HttpRequestMessage<Optional<String>> request, ExecutionContext context)

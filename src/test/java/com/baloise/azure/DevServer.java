@@ -290,9 +290,13 @@ public class DevServer {
 				Method method = functionMapping.get(path.peek());
 				ResponseBuilderImpl.HttpResponseMessageImpl resp = (ResponseBuilderImpl.HttpResponseMessageImpl) method.invoke(getInstance(method), parameterMappings.get(method).map(path, exg));
 				resp.getHeaders().forEach((k,v)-> exg.getResponseHeaders().add(k,v));
-				byte response[] = getResponseBytes(resp);
-				exg.sendResponseHeaders(resp.getStatusCode(), response.length);
-				out.write(response);
+				if(hasBody(resp)) {
+					byte response[] = getResponseBytes(resp);
+					exg.sendResponseHeaders(resp.getStatusCode(), response.length);
+					out.write(response);
+				} else {
+					exg.sendResponseHeaders(resp.getStatusCode(), -1);
+				}
 			} catch (Throwable t) {
 				logger.log(Level.WARNING, t.getLocalizedMessage(), t);
 			}
@@ -301,8 +305,13 @@ public class DevServer {
 		server.start();
 	}
 
+	private boolean hasBody(com.baloise.azure.DevServer.ResponseBuilderImpl.HttpResponseMessageImpl resp) {
+		return resp.getBody()!= null;
+	}
+
 	private byte[] getResponseBytes(com.baloise.azure.DevServer.ResponseBuilderImpl.HttpResponseMessageImpl resp) throws UnsupportedEncodingException {
 		Object body = resp.getBody();
+		if(body == null) return new byte[0];
 		if(body instanceof byte[]) {
 			return (byte[]) body;
 		}
