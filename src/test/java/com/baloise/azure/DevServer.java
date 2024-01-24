@@ -153,18 +153,20 @@ public class DevServer {
 		private HttpExchange exg;
 		private Map<String, String> queryParameters;
 		private Map<String, String> headers;
+		private URI uri;
 
 		public HttpRequestMessageImpl(HttpExchange exg) {
 			this.exg = exg;
+			try {
+				uri = new URI(HTTP_HOST+exg.getRequestURI().toString());
+			} catch (URISyntaxException e) {
+				uri = exg.getRequestURI();
+			}
 		}
 
 		@Override
 		public URI getUri() {
-			try {
-				return new URI(HTTP_HOST+exg.getRequestURI().toString());
-			} catch (URISyntaxException e) {
-				return exg.getRequestURI();
-			}
+			return uri;
 		}
 
 		@Override
