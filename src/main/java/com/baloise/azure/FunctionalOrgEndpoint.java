@@ -1,6 +1,8 @@
 package com.baloise.azure;
 
 import static java.lang.String.format;
+import static java.util.Arrays.stream;
+import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.joining;
 
 import java.io.IOException;
@@ -10,10 +12,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import com.azure.identity.ClientSecretCredentialBuilder;
+import com.baloise.funorg.Role;
 import com.baloise.funorg.Team;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,7 +31,6 @@ import com.microsoft.azure.functions.annotation.BindingName;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
-import com.microsoft.graph.models.DirectoryObject;
 import com.microsoft.graph.models.Group;
 import com.microsoft.graph.models.User;
 
@@ -119,7 +122,7 @@ public class FunctionalOrgEndpoint {
 										.map(t -> 
 										Map.of(
 												"name", t.unit(),
-												"url", request.getUri()+"/"+ t.unit()
+												"url", getCleanUri(request)+"/"+ t.unit()
 												)
 												)
 										.distinct()
@@ -162,13 +165,13 @@ public class FunctionalOrgEndpoint {
 							"name", t.name(),
 							"unit", t.unit(),
 							"url", getPath(request)+"/"+t.name(),
-							"members" , loadAndMapMembers(group, t.internal())
+							"members" , loadAndMapMembers(group, t.internal(), request.getQueryParameters().get("expand"))
 							);
 					name2team.put(t.name(), tmp);
 				} else {
 					@SuppressWarnings("unchecked")
 					List<Map<String, Object>> members = (List<Map<String, Object>>) tmp.get("members");
-					members.addAll(loadAndMapMembers(group, t.internal()));
+					members.addAll(loadAndMapMembers(group, t.internal(), request.getQueryParameters().get("expand")));
 				}
 			} catch (ParseException e) {
 				context.getLogger().log(Level.WARNING, e.getLocalizedMessage(), e);
@@ -182,13 +185,19 @@ public class FunctionalOrgEndpoint {
 						).build();
 	}
 
-	private List<Map<String, Object>> loadAndMapMembers(Group group, boolean internal) {
-		return graph().getGroupMembers(group.id).stream().map(u-> mapUser(u,internal)).collect(Collectors.toList());
+	private List<Map<String, Object>> loadAndMapMembers(Group group, boolean internal, String expand) {
+		return graph().getGroupMembers(group).stream()
+				.map(User.class::cast)
+				.map(u-> mapUser(u,internal, graph().getRoles(u),expand)).collect(Collectors.toList());
 	}
 	
 	private String getPath(HttpRequestMessage<?> request) {
-		String uri = request.getUri().toString();
+		String uri = getCleanUri(request);
 		return uri.substring(0, uri.lastIndexOf('/'));
+	}
+
+	private String getCleanUri(HttpRequestMessage<?> request) {
+		return request.getUri().toString().replaceFirst("/\\z", "");
 	}
 
 	@FunctionName("dump")
@@ -226,17 +235,37 @@ public class FunctionalOrgEndpoint {
 		return "\nEnv\n\n"+System.getenv().entrySet().stream().map(e -> format("%s = %s", e.getKey(), e.getValue())).collect(joining("\n"));
 	}
 
-	private Map<String, Object> mapUser(DirectoryObject dirObj, boolean internal) {
-		User u = (User) dirObj;
-		return Map.of(
+	private Map<String, Object> mapUser(User u, boolean internal, Set<Role> roles, String expand) {
+		Map<String, Object> core = Map.of(
 				"preferredLanguage", 	notNull(u.preferredLanguage),
 				"officeLocation", 		notNull(u.officeLocation),
 				"displayName", 			notNull(u.displayName),
 				"givenName", 			notNull(u.givenName),
 				"surname", 				notNull(u.surname),
 				"mail", 				notNull(u.mail),
+				"roles", 				roles,
 				"internal", 			internal
 				);
+		return expand == null ?  
+				core : 
+					stream(expand.split(","))
+					.map(String::trim)
+					.filter(Objects::nonNull)
+					.filter(not(String::isEmpty))
+					.reduce(
+				         new HashMap<>(core), (map, element) -> {
+				    	  		try {
+									map.put(element, u.getClass().getField(element).get(u));
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
+				    	  		return map;
+				          },
+				          (map1, map2) -> {
+				              map1.putAll(map2);
+				              return map1;
+				          }
+					);
 	}
 	
 	private String notNull(String mayBeNull) {return mayBeNull == null? "" :mayBeNull;}

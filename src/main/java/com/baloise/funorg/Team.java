@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 
 public record Team(String unit, String name,boolean internal) {
 	public final static String PREFIX = "F-AAD-TEAM-";
-	private final static String SEPERATOR = "-";
+	final static String SEPERATOR = "-";
 	private final static String INTERNAL = "INTERNAL";
 	
 	/**
