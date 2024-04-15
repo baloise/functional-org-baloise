@@ -7,6 +7,7 @@ import static java.util.Objects.isNull;
 import static java.util.UUID.randomUUID;
 import static java.util.logging.Logger.getLogger;
 
+import java.awt.Desktop;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -27,11 +28,13 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.baloise.azure.MiniCLI.Command;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -281,8 +284,7 @@ public class DevServer {
 	Logger logger = getLogger(name);
 
 	public void start() throws IOException {
-		HttpServer server = HttpServer.create(new InetSocketAddress(HTTP_PORT), 0);
-		functionMapping.keySet().stream().map(HTTP_HOST_API_CONTEXT::concat).forEach(System.out::println);
+		HttpServer server = HttpServer.create(new InetSocketAddress(HTTP_PORT), 0);		
 		server.createContext("/api", exg -> {
 			try(OutputStream out = exg.getResponseBody()) {
 				LinkedList<String> path = parsePath(exg.getRequestURI().toString());
@@ -303,6 +305,20 @@ public class DevServer {
 		});
 
 		server.start();
+		
+		MiniCLI cli = new MiniCLI();
+		AtomicInteger urlCount = new AtomicInteger(1);
+		functionMapping.keySet().stream().map(HTTP_HOST_API_CONTEXT::concat)
+		.map(url->{return new Command(String.valueOf(urlCount.getAndIncrement()), url, ()->{
+			try {
+				Desktop.getDesktop().browse(new URI(url));
+			} catch (IOException | URISyntaxException e) {
+				e.printStackTrace();
+			}
+		});})
+		.forEach(cli::add);
+		cli.add(new Command("q", "quit", ()->{System.exit(0);}));
+		cli.start();
 	}
 
 	private boolean hasBody(com.baloise.azure.DevServer.ResponseBuilderImpl.HttpResponseMessageImpl resp) {
