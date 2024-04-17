@@ -34,7 +34,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<java.version>17</java.version>
 		<azure.functions.maven.plugin.version>1.27.0</azure.functions.maven.plugin.version>
-		<azure.functions.java.library.version>3.0.0</azure.functions.java.library.version>
+		<azure.functions.java.library.version>3.1.0</azure.functions.java.library.version>
 		<functionAppName>functional-org-baloise</functionAppName>
 	</properties>
 
@@ -47,15 +47,27 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<dependency>
+				<groupId>com.azure</groupId>
+				<artifactId>azure-sdk-bom</artifactId>
+				<version>1.2.22</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
 
 	<dependencies>
 		<dependency>
+			<groupId>com.microsoft.azure</groupId>
+			<artifactId>msal4j</artifactId>
+			<version>1.14.3</version>
+		</dependency>
+		<dependency>
 			<groupId>com.microsoft.graph</groupId>
 			<artifactId>microsoft-graph</artifactId>
-			<version>5.77.0</version>
+			<version>6.5.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.microsoft.azure.functions</groupId>
@@ -63,19 +75,12 @@
 			<version>${azure.functions.java.library.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.microsoft.azure</groupId>
-			<artifactId>msal4j</artifactId>
-			<version>1.14.1</version>
-		</dependency>
-		<dependency>
 			<groupId>com.azure</groupId>
 			<artifactId>azure-security-keyvault-secrets</artifactId>
-			<version>4.7.3</version>
 		</dependency>
 		<dependency>
 			<groupId>com.azure</groupId>
 			<artifactId>azure-identity</artifactId>
-			<version>1.11.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>

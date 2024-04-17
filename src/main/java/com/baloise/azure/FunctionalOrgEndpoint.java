@@ -1,25 +1,21 @@
 package com.baloise.azure;
 
 import static java.lang.String.format;
-import static java.util.Arrays.stream;
-import static java.util.function.Predicate.not;
+import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
 
 import java.io.IOException;
-import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.logging.Level;
-import java.util.stream.Collectors;
 
+import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
-import com.baloise.funorg.Role;
-import com.baloise.funorg.Team;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.azure.functions.ExecutionContext;
@@ -29,12 +25,10 @@ import com.microsoft.azure.functions.HttpResponseMessage;
 import com.microsoft.azure.functions.HttpResponseMessage.Builder;
 import com.microsoft.azure.functions.HttpStatus;
 import com.microsoft.azure.functions.annotation.AuthorizationLevel;
-import com.microsoft.azure.functions.annotation.BindingName;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
-import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
-import com.microsoft.graph.models.Group;
-import com.microsoft.graph.models.User;
+
+import common.StringTree;
 
 /**
  * Azure Functions with HTTP Trigger.
@@ -59,10 +53,18 @@ public class FunctionalOrgEndpoint {
 	
 	Graph graph() {
 		if(lazygraph == null) {
-			lazygraph = new Graph(new TokenCredentialAuthProvider( new ClientSecretCredentialBuilder()
-					.authorityHost(AzureProperties.authority())
-					.tenantId(AzureProperties.tenantId()).clientId(AzureProperties.clientId())
-					.clientSecret(vault().getSecret(AzureProperties.clientSecretName(), true)).build()));
+			final String[] scopes = new String[] { AzureProperties.defaultScope() };
+			final ClientSecretCredential credential = 
+					new ClientSecretCredentialBuilder()
+						.clientId(AzureProperties.clientId()).
+						tenantId(AzureProperties.tenantId())
+						.clientSecret(
+								vault().getSecret(AzureProperties.clientSecretName(), true)
+			    		)
+						.build();
+
+			
+			lazygraph = new Graph(credential, scopes);
 		}
 		return lazygraph;
 	}
@@ -73,35 +75,25 @@ public class FunctionalOrgEndpoint {
 					name = "req", 
 					methods = { HttpMethod.GET, HttpMethod.POST }, 
 					authLevel = AuthorizationLevel.ANONYMOUS,
-					route = "V1/{unit=null}/{team=null}"
+					route = "V1/{a=null}/{b=null}/{c=null}/{d=null}/{e=null}/{f=null}/{g=null}/{h=null}/{i=null}"
 			) 
 			HttpRequestMessage<Optional<String>> request,
-			final ExecutionContext context,
-			@BindingName("unit") String unit,
-			@BindingName("team") String team
+			final ExecutionContext context
 		) {
 		try {
-			
-			
-			if(!"null".equals(team) && "avatar".equals(unit)) {				
-				return createAvatarResponse(request, team);
-			}
-			if(!"null".equals(team)) {				
-				return createTeamResponse(request, context, unit, team);
+			List<String> path =  asList(request.getUri().getPath().split("/"));
+			path = path.subList(path.indexOf("V1")+1, path.size());
+			if(path.size() ==2 && "avatar".equals(path.get(0))) {				
+				return createAvatarResponse(request, path.get(1));
 			}
 			
-			if(!"null".equals(unit)) {
-				return createUnitResponse(request, context, unit);
-			}
+			final StringTree child = graph().getOrg().getChild(path.toArray(new String[0]));
 			
-			return createRootResponse(request, context);
+			return child.isLeaf() ?  createTeamResponse(request, context, child) : createOrganisationResponse(request, context, child);
 			
-		} catch (IOException e) {
-			context.getLogger().warning(e.getLocalizedMessage());
-			return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getLocalizedMessage()).build();
 		} catch (Throwable t) {
 			context.getLogger().log(Level.WARNING, t.getLocalizedMessage(), t);
-			throw t;
+			return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(t.getLocalizedMessage()).build();
 		}
 	}
 
@@ -124,6 +116,7 @@ public class FunctionalOrgEndpoint {
 
 	private Map<String, String> ignoreKeyCase(Map<String, String> mixedMap) {
 		Map<String, String> lowMap = new HashMap<>() {
+			private static final long serialVersionUID = 5782240485145186162L;
 			@Override
 			public String get(Object key) {
 				return super.get(key.toString().toLowerCase());
@@ -133,86 +126,46 @@ public class FunctionalOrgEndpoint {
 		return lowMap;
 	}
 
-	private HttpResponseMessage createRootResponse(HttpRequestMessage<Optional<String>> request, ExecutionContext context)
+	private HttpResponseMessage createTeamResponse(HttpRequestMessage<Optional<String>> request, ExecutionContext context, StringTree team)
 			throws JsonProcessingException {
-		return request.createResponseBuilder(HttpStatus.OK)
-				.header("Content-Type","application/json; charset=UTF-8")
-				.body( 					
-						objectMapper.writeValueAsString(
-								Map.of("units",
-										graph().getTeams().stream()
-										.map(g -> Team.parse(context.getLogger(), g.displayName))
-										.filter(Objects::nonNull)
-										.map(t -> 
-										Map.of(
-												"name", t.unit(),
-												"url", getCleanUri(request)+"/"+ t.unit()
-												)
-												)
-										.distinct()
-										.collect(Collectors.toList())
-										))
-						).build();
+	
+		final Map<String, Object> body = graph().loadTeam(team.getProperty("id"), getRoles(request));
+		body.put("name", team.getName());
+		body.put("url", format("%s/%s", getPath(request),team.getName()));
+		return createJSONResponse(request, body);
 	}
 
-	private HttpResponseMessage createUnitResponse(HttpRequestMessage<Optional<String>> request, ExecutionContext context, String unit) throws JsonProcessingException {
-		return request.createResponseBuilder(HttpStatus.OK)
-				.header("Content-Type","application/json; charset=UTF-8")
-				.body( 					
-						objectMapper.writeValueAsString(
-								Map.of("teams",
-										graph().getTeams(unit+"-").stream()
-										.map(g -> Team.parse(context.getLogger(), g.displayName))
-										.filter(Objects::nonNull)
-										.map(t -> 
-										Map.of(
-												"name", t.name(),
-												"unit", t.unit(),
-												"url", format("%s/%s/%s", getPath(request), t.unit(),t.name())
-												)
-												)
-											.distinct()
-											.collect(Collectors.toList())
-										))
-						).build();
+	String[] getRoles(HttpRequestMessage<Optional<String>> request) {
+		String roles = request.getQueryParameters().get("roles");
+		return (roles == null) ? new String[0] : roles.split("\\s+,\\s+");
 	}
-
-	private HttpResponseMessage createTeamResponse(HttpRequestMessage<Optional<String>> request, ExecutionContext context, String unit, String team) throws JsonProcessingException {
-		Map<String, Map<String,Object>> name2team = new HashMap<>();
-		
-		for (Group group : graph().getTeams(unit+"-"+team)) {
-			try {
-				Team t = Team.parse(group.displayName);
-				Map<String, Object> tmp = name2team.get(t.name());
-				if(tmp== null) {
-					tmp = Map.of(
-							"name", t.name(),
-							"unit", t.unit(),
-							"url", getPath(request)+"/"+t.name(),
-							"members" , loadAndMapMembers(group, t.internal(), request.getQueryParameters().get("expand"))
-							);
-					name2team.put(t.name(), tmp);
-				} else {
-					@SuppressWarnings("unchecked")
-					List<Map<String, Object>> members = (List<Map<String, Object>>) tmp.get("members");
-					members.addAll(loadAndMapMembers(group, t.internal(), request.getQueryParameters().get("expand")));
-				}
-			} catch (ParseException e) {
-				context.getLogger().log(Level.WARNING, e.getLocalizedMessage(), e);
+	
+	private HttpResponseMessage createOrganisationResponse(HttpRequestMessage<Optional<String>> request, ExecutionContext context, StringTree tree)
+			throws JsonProcessingException {
+		Map<String, List<Map<String, String>>> response = new HashMap<>();
+		response.put("units", new ArrayList<Map<String,String>>());
+		response.put("teams", new ArrayList<Map<String,String>>());
+		for (StringTree child : tree.getChildren()) {
+			if(child.isLeaf()) {
+				response.get("teams").add(Map.of(
+						"name", child.getName(),
+						"url", format("%s/%s", getPath(request),child.getName())
+						));
+			} else {
+				response.get("units").add(Map.of(
+						"name", child.getName(),
+						"url", format("%s/%s", getPath(request),child.getName())
+						));				
 			}
 		}
-		return request.createResponseBuilder(HttpStatus.OK)
-				.header("Content-Type","application/json; charset=UTF-8")
-				.body( 					
-						objectMapper.writeValueAsString(
-								Map.of("teams", name2team.values()))
-						).build();
+		return createJSONResponse(request, response);
 	}
 
-	private List<Map<String, Object>> loadAndMapMembers(Group group, boolean internal, String expand) {
-		return graph().getGroupMembers(group).stream()
-				.map(User.class::cast)
-				.map(u-> mapUser(u,internal, graph().getRoles(u),expand)).collect(Collectors.toList());
+	HttpResponseMessage createJSONResponse(HttpRequestMessage<Optional<String>> request,
+			Object body) throws JsonProcessingException {
+		return request.createResponseBuilder(HttpStatus.OK)
+				.header("Content-Type","application/json; charset=UTF-8")
+				.body(objectMapper.writeValueAsString(body)).build();
 	}
 	
 	private String getPath(HttpRequestMessage<?> request) {
@@ -259,39 +212,4 @@ public class FunctionalOrgEndpoint {
 		return "\nEnv\n\n"+System.getenv().entrySet().stream().map(e -> format("%s = %s", e.getKey(), e.getValue())).collect(joining("\n"));
 	}
 
-	private Map<String, Object> mapUser(User u, boolean internal, Set<Role> roles, String expand) {
-		Map<String, Object> core = Map.of(
-				"preferredLanguage", 	notNull(u.preferredLanguage),
-				"officeLocation", 		notNull(u.officeLocation),
-				"displayName", 			notNull(u.displayName),
-				"givenName", 			notNull(u.givenName),
-				"surname", 				notNull(u.surname),
-				"mail", 				notNull(u.mail),
-				"roles", 				roles,
-				"internal", 			internal
-				);
-		return expand == null ?  
-				core : 
-					stream(expand.split(","))
-					.map(String::trim)
-					.filter(Objects::nonNull)
-					.filter(not(String::isEmpty))
-					.reduce(
-				         new HashMap<>(core), (map, element) -> {
-				    	  		try {
-									map.put(element, u.getClass().getField(element).get(u));
-								} catch (Exception e) {
-									e.printStackTrace();
-								}
-				    	  		return map;
-				          },
-				          (map1, map2) -> {
-				              map1.putAll(map2);
-				              return map1;
-				          }
-					);
-	}
-	
-	private String notNull(String mayBeNull) {return mayBeNull == null? "" :mayBeNull;}
-	
 }

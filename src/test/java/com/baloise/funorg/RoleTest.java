@@ -1,8 +1,7 @@
 package com.baloise.funorg;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.util.EnumSet;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 
