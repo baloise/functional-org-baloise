@@ -53,6 +53,10 @@ public class Graph {
 	public byte[] avatar(String id) throws IOException {
 		try(InputStream is = graphClient.users().byUserId(id).photo().content().get()){
 			return is.readAllBytes();
+		} catch (Exception e) {
+			try(InputStream is = getClass().getResourceAsStream("unknown_person.jpg")){
+				return is.readAllBytes();
+			}	
 		}
 	}
 	
