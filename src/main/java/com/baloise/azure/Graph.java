@@ -4,9 +4,7 @@ import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.Map.of;
-import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
@@ -17,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -76,33 +75,31 @@ public class Graph {
 	private String notNull(String mayBeNull) {return mayBeNull == null? "" :mayBeNull;}
 
 	public Map<String, Object> loadTeam(String teamId, String ... roleNames) {
-		return expandRoles(roleNames).stream().collect(toMap(identity(), (roleName)-> {
+		Map<String, Map<String, Object>> mail2member = new TreeMap<>();
+		expandRoles(roleNames).stream().forEach(roleName-> {
 			final String tagId = getTagId(teamId, roleName);
-			return tagId == null ? 
-					Collections.emptyList() :
-					map(graphClient.teams().byTeamId(teamId).tags().byTeamworkTagId(tagId).members().get()
-						.getValue());
-		}));
+			if(tagId != null) { 
+				map(graphClient.teams().byTeamId(teamId).tags().byTeamworkTagId(tagId).members().get().getValue()).forEach(member->{
+					Map<String, Object> mappedMember = mail2member.computeIfAbsent(member.getMail(), (ignored)-> new TreeMap<>());
+					mappedMember.put("displayName",notNull(member.getDisplayName()));
+					mappedMember.put("mail",notNull(member.getMail()));
+					mappedMember.put("officeLocation",notNull(member.getOfficeLocation()));
+					mappedMember.put("preferredLanguage",notNull(member.getPreferredLanguage()));
+					((Set<String>) mappedMember.computeIfAbsent("roles",(ignored)-> new TreeSet<>())).add(roleName);
+				});
+			}
+		});
+		return new TreeMap<>(of("members", mail2member.values()));
 	}
 	
-	private List<Map<String, String>> map(List<TeamworkTagMember> members) {
+	private List<User> map(List<TeamworkTagMember> members) {
 		return graphClient.users().get((requestConfiguration)->{
 			requestConfiguration.queryParameters.filter = format(
 					"id in (%s)", 
 					members.stream().map(TeamworkTagMember::getUserId).collect(joining("', '", "'", "'"))
 					);
 			requestConfiguration.queryParameters.select = new String []{"displayName", "mail", "officeLocation","preferredLanguage"};
-		}).getValue().stream().map(this::mapMember).collect(toList());
-	}
-
-	private Map<String, String> mapMember(User u) {
-		return of(
-				"displayName", 			notNull(u.getDisplayName()),
-				"mail", 				notNull(u.getMail()),
-				"officeLocation", 		notNull(u.getOfficeLocation()),
-				"preferredLanguage", 	notNull(u.getPreferredLanguage())
-				);
-		
+		}).getValue();
 	}
 
 	private String getTagId(String teamId, String tagName) {
