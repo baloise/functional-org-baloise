@@ -87,6 +87,7 @@ public class FunctionalOrgEndpoint {
 				return createAvatarResponse(request, path.get(1));
 			}
 			
+			if(request.getQueryParameters().containsKey("clear")) graph().clear();
 			final StringTree child = graph().getOrg().getChild(path.toArray(new String[0]));
 			
 			return child.isLeaf() ?  createTeamResponse(request, context, child) : createOrganisationResponse(request, context, child);
@@ -137,7 +138,7 @@ public class FunctionalOrgEndpoint {
 
 	String[] getRoles(HttpRequestMessage<Optional<String>> request) {
 		String roles = request.getQueryParameters().get("roles");
-		return (roles == null) ? new String[0] : roles.split("\\s+,\\s+");
+		return (roles == null) ? new String[0] : roles.trim().split("\\s*,\\s*");
 	}
 	
 	private HttpResponseMessage createOrganisationResponse(HttpRequestMessage<Optional<String>> request, ExecutionContext context, StringTree tree)
