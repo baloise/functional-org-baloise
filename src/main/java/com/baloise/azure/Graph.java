@@ -38,7 +38,7 @@ public class Graph {
 	final String orgSeparator = "-";
 	final String teamFilter = "startsWith(displayName,'"+teamMarker+"')";
 	final Pattern orgPattern = Pattern.compile(orgMarker+"\\s*\\(\\s*([\\w"+orgSeparator+"]+)\\s*\\)");
-	StringTree org = new StringTree("Baloise");
+	StringTree org = new StringTree("root");
 	GraphServiceClient graphClient;
 		
 	Graph() {
@@ -48,7 +48,11 @@ public class Graph {
 	public Graph(ClientSecretCredential credential, String[] scopes) {
 		graphClient = new GraphServiceClient(credential, scopes);
 	}
-
+	
+	
+	public void clear() {
+		org = new StringTree(org.getName());
+	}
 
 	public byte[] avatar(String id) throws IOException {
 		try(InputStream is = graphClient.users().byUserId(id).photo().content().get()){
@@ -67,11 +71,12 @@ public class Graph {
 		});
 		
 		for (Team team : response.getValue()) {
-			org.merge(
-					parseOrg(team.getDescription())
-						.addChild(new StringTree(parseName(team.getDisplayName())).withProperty("id", team.getId()))
-						.getRoot()
-					);
+			parseOrg(team.getDescription())
+				.addChild(
+						new StringTree(parseName(team.getDisplayName()))
+							.withProperty("id", team.getId()
+						 )
+				);
 		}
 		return org;
 	}
@@ -133,8 +138,7 @@ public class Graph {
 
 	StringTree parseOrg(String description) {
 		Matcher matcher = orgPattern.matcher(description);
-		matcher.find();
-		return new StringTree(org.getName()).addChild(matcher.group(1).split(orgSeparator));
+		return matcher.find() ? org.addChild(matcher.group(1).split(orgSeparator)) : org;
 	}
 	
 }

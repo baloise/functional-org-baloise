@@ -9,14 +9,21 @@ import org.junit.jupiter.api.Test;
 
 class GraphTest {
 
+	Graph g = new Graph();
 	@Test
 	public void testExpandRoles() {
-		Graph g = new Graph();
 		assertEquals(new TreeSet<String>(asList("Member","ProductOwner", "ScrumMaster")), g.expandRoles(null));
 		assertEquals(new TreeSet<String>(asList("Member","ProductOwner", "ScrumMaster")), g.expandRoles());
 		assertEquals(new TreeSet<String>(asList("Member","ProductOwner", "ScrumMaster")), g.expandRoles("~SCRUM"));
 		assertEquals(new TreeSet<String>(asList("Member","ProductOwner", "ScrumMaster", "test")), g.expandRoles("~SCRUM", "test"));
 		assertEquals(new TreeSet<String>(asList("a", "test")), g.expandRoles("a", "test"));
+	}
+
+	@Test
+	public void testParseOrg() {
+//		assertEquals(new Org(), null);
+		g.parseOrg("");
+		
 	}
 
 }
