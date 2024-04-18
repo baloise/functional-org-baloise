@@ -2,6 +2,7 @@ package com.baloise.azure;
 
 import static java.util.Arrays.asList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.util.TreeSet;
 
@@ -20,10 +21,11 @@ class GraphTest {
 	}
 
 	@Test
-	public void testParseOrg() {
-//		assertEquals(new Org(), null);
-		g.parseOrg("");
-		
+	public void testGetRoleSchemes() {
+		g.expandRoles("bla");
+		final Graph expected = new Graph();
+		assertNotEquals(expected.rolesSchemes, g.rolesSchemes);
+		assertEquals(expected.getRoleSchemes(), g.getRoleSchemes());
 	}
 
 }

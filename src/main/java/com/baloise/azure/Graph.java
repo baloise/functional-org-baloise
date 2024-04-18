@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -32,7 +33,7 @@ import common.StringTree;
 
 public class Graph {
 	private final String SCRUM_ROLES = "~SCRUM";
-	private final Map<String, Set<String>> rolesSchemes = new HashMap<>(of(SCRUM_ROLES, new TreeSet<String>(asList("Member", "ScrumMaster", "ProductOwner"))));
+	final Map<String, Set<String>> rolesSchemes = new HashMap<>(of(SCRUM_ROLES, new TreeSet<String>(asList("Member", "ScrumMaster", "ProductOwner"))));
 	final String teamMarker = "👨‍👨‍👦‍👦";
 	final String orgMarker = "🏢";
 	final String orgSeparator = "-";
@@ -125,10 +126,14 @@ public class Graph {
 
 	Set<String> expandRoles(String ... rolesNames) {
 		return rolesNames == null || rolesNames.length == 0 ? 
-				expandRoles(SCRUM_ROLES) :
+				expandRoles(getDefaultRoleScheme()) :
 				stream(rolesNames)
 					.flatMap((name)-> rolesSchemes.computeIfAbsent(name, Collections::singleton).stream())
 					.collect(toSet());
+	}
+
+	public String getDefaultRoleScheme() {
+		return SCRUM_ROLES;
 	}
 
 	String parseName(String input) {
@@ -139,6 +144,10 @@ public class Graph {
 	StringTree parseOrg(String description) {
 		Matcher matcher = orgPattern.matcher(description);
 		return matcher.find() ? org.addChild(matcher.group(1).split(orgSeparator)) : org;
+	}
+
+	public Map<String, Set<String>> getRoleSchemes() {
+		return rolesSchemes.entrySet().stream().filter(e->e.getValue().size()>1).collect(toMap(Entry::getKey,Entry::getValue));
 	}
 	
 }

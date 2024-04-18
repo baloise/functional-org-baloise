@@ -83,9 +83,12 @@ public class FunctionalOrgEndpoint {
 		try {
 			List<String> path =  asList(request.getUri().getPath().split("/"));
 			path = path.subList(path.indexOf("V1")+1, path.size());
-			if(path.size() ==2 && "avatar".equals(path.get(0))) {				
+			if(path.size() ==1 && "~rolesSchemes".equals(path.get(0))) {			
+				return createJSONResponse(request, Map.of("default", graph().getDefaultRoleScheme(), "roleSchemes", graph().getRoleSchemes()));
+			} else if(path.size() ==2 && "~avatar".equals(path.get(0))) {				
 				return createAvatarResponse(request, path.get(1));
 			}
+			
 			
 			if(request.getQueryParameters().containsKey("clear")) graph().clear();
 			final StringTree child = graph().getOrg().getChild(path.toArray(new String[0]));
