@@ -92,9 +92,15 @@ public class Graph {
 				map(graphClient.teams().byTeamId(teamId).tags().byTeamworkTagId(tagId).members().get().getValue()).forEach(member->{
 					Map<String, Object> mappedMember = mail2member.computeIfAbsent(member.getMail(), (ignored)-> new TreeMap<>());
 					mappedMember.put("displayName",notNull(member.getDisplayName()));
+					mappedMember.put("givenName",notNull(member.getGivenName()));
+					mappedMember.put("surname",notNull(member.getSurname()));
 					mappedMember.put("mail",notNull(member.getMail()));
 					mappedMember.put("officeLocation",notNull(member.getOfficeLocation()));
 					mappedMember.put("preferredLanguage",notNull(member.getPreferredLanguage()));
+					mappedMember.put("businessPhones",member.getBusinessPhones());
+					mappedMember.put("department",notNull(member.getDepartment()));
+					mappedMember.put("userKey",notNull(member.getMailNickname()));
+					mappedMember.put("usageLocation",notNull(member.getUsageLocation()));
 					((Set<String>) mappedMember.computeIfAbsent("roles",(ignored)-> new TreeSet<>())).add(roleName);
 				});
 			}
@@ -108,7 +114,19 @@ public class Graph {
 					"id in (%s)", 
 					members.stream().map(TeamworkTagMember::getUserId).collect(joining("', '", "'", "'"))
 					);
-			requestConfiguration.queryParameters.select = new String []{"displayName", "mail", "officeLocation","preferredLanguage"};
+			requestConfiguration.queryParameters.select = new String []{
+					"displayName", 
+					"mail", 
+					"officeLocation",
+					"preferredLanguage",
+					"businessPhones",
+					"department",
+					"employeeId",
+					"mailNickname",
+					"usageLocation",
+					"givenName",
+					"surname"
+			};
 		}).getValue();
 	}
 
