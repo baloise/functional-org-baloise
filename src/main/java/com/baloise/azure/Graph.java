@@ -80,12 +80,12 @@ public class Graph {
 				.addChild(
 						new StringTree(parseName(team.getDisplayName()))
 							.withProperty("id", team.getId())
-							.withProperty("description", notNull(team.getDescription()))
+							.withProperty("description", notNull(cleanDescription(team.getDescription())))
 				);
 		}
 		return org;
 	}
-	
+
 	private String notNull(String mayBeNull) {		
 		String ret = mayBeNull == null? "" :mayBeNull;
 		return  obfuscated ? (ret + "...").substring(0, 3)+"..." : ret;
@@ -174,6 +174,10 @@ public class Graph {
 	StringTree parseOrg(String description) {
 		Matcher matcher = orgPattern.matcher(description);
 		return matcher.find() ? org.addChild(matcher.group(1).split(orgSeparator)) : org;
+	}
+	
+	String cleanDescription(String description) {
+		return orgPattern.matcher(description).replaceAll("");
 	}
 
 	public Map<String, Set<String>> getRoleSchemes() {
