@@ -79,8 +79,8 @@ public class Graph {
 			parseOrg(team.getDescription())
 				.addChild(
 						new StringTree(parseName(team.getDisplayName()))
-							.withProperty("id", team.getId()
-						 )
+							.withProperty("id", team.getId())
+							.withProperty("description", notNull(team.getDescription()))
 				);
 		}
 		return org;
@@ -181,6 +181,7 @@ public class Graph {
 	}
 
 	public Graph withObfuscation(boolean obfuscated) {
+		if(this.obfuscated != obfuscated) clear();
 		this.obfuscated = obfuscated;
 		return this;
 	}

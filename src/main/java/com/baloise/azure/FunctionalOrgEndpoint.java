@@ -147,6 +147,7 @@ public class FunctionalOrgEndpoint {
 	
 		final Map<String, Object> body = graph(obfuscated).loadTeam(team.getProperty("id"), getRoles(request));
 		body.put("name", team.getName());
+		body.put("description", team.getProperty("description"));
 		body.put("url", format("%s/%s", getPath(request),team.getName()));
 		return createJSONResponse(request, body);
 	}
