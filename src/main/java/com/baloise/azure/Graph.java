@@ -104,7 +104,7 @@ public class Graph {
 					mappedMember.put("displayName",notNull(member.getDisplayName()));
 					mappedMember.put("givenName",notNull(member.getGivenName()));
 					mappedMember.put("surname",notNull(member.getSurname()));
-					mappedMember.put("mail",member.getMail());
+					mappedMember.put("mail",notNull(member.getMail()));
 					mappedMember.put("officeLocation",notNull(member.getOfficeLocation()));
 					mappedMember.put("preferredLanguage",notNull(member.getPreferredLanguage()));
 					mappedMember.put("businessPhones",notNull(member.getBusinessPhones()));
