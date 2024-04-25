@@ -7,11 +7,13 @@ import static java.util.stream.Collectors.joining;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Level;
 
 import com.azure.identity.ClientSecretCredential;
@@ -34,15 +36,12 @@ import common.StringTree;
  * Azure Functions with HTTP Trigger.
  */
 public class FunctionalOrgEndpoint {
-	/**
-	 * This function listens at endpoint "/api/Hello". Two ways to invoke it using
-	 * "curl" command in bash: 1. curl -d "HTTP Body" {your host}/api/Hello 2. curl
-	 * "{your host}/api/Hello?name=HTTP%20Query"
-	 */
 	
 	Vault lazyVault = null;
 	Graph lazygraph = null;
 	ObjectMapper objectMapper = new ObjectMapper();
+	private Set<String> lazyValidTokens;
+	final static String TOKEN_KEY = "TOKENS";
 	
 	Vault vault() {
 		if(lazyVault == null) {
@@ -51,7 +50,7 @@ public class FunctionalOrgEndpoint {
 		return lazyVault;
 	}
 	
-	Graph graph() {
+	Graph graph(boolean obfuscated) {
 		if(lazygraph == null) {
 			final String[] scopes = new String[] { AzureProperties.defaultScope() };
 			final ClientSecretCredential credential = 
@@ -64,9 +63,9 @@ public class FunctionalOrgEndpoint {
 						.build();
 
 			
-			lazygraph = new Graph(credential, scopes);
+			lazygraph = new Graph(credential, scopes, obfuscated);
 		}
-		return lazygraph;
+		return lazygraph.withObfuscation(obfuscated);
 	}
 	
 	@FunctionName("V1")
@@ -83,17 +82,18 @@ public class FunctionalOrgEndpoint {
 		try {
 			List<String> path =  asList(request.getUri().getPath().split("/"));
 			path = path.subList(path.indexOf("V1")+1, path.size());
+			boolean obfuscated = !hasValidToken(request);
 			if(path.size() ==1 && "~roleSchemes".equals(path.get(0))) {			
-				return createJSONResponse(request, Map.of("default", graph().getDefaultRoleScheme(), "roleSchemes", graph().getRoleSchemes()));
+				return createJSONResponse(request, Map.of("default", graph(obfuscated).getDefaultRoleScheme(), "roleSchemes", graph(obfuscated).getRoleSchemes()));
 			} else if(path.size() ==2 && "~avatar".equals(path.get(0))) {				
-				return createAvatarResponse(request, path.get(1));
+				return createAvatarResponse(request, path.get(1), obfuscated);
 			}
 			
 			
-			if(request.getQueryParameters().containsKey("clear")) graph().clear();
-			final StringTree child = graph().getOrg().getChild(path.toArray(new String[0]));
+			if(request.getQueryParameters().containsKey("clear")) graph(obfuscated).clear();
+			final StringTree child = graph(obfuscated).getOrg().getChild(path.toArray(new String[0]));
 			
-			return child.isLeaf() ?  createTeamResponse(request, context, child) : createOrganisationResponse(request, context, child);
+			return child.isLeaf() ?  createTeamResponse(request, context, child, obfuscated) : createOrganisationResponse(request, context, child);
 			
 		} catch (Throwable t) {
 			context.getLogger().log(Level.WARNING, t.getLocalizedMessage(), t);
@@ -101,8 +101,20 @@ public class FunctionalOrgEndpoint {
 		}
 	}
 
-	private HttpResponseMessage createAvatarResponse(HttpRequestMessage<Optional<String>> request, String id) throws IOException {
-		byte[] avatar = graph().avatar(id);
+	private boolean hasValidToken(HttpRequestMessage<Optional<String>> request) {
+		String token = request.getQueryParameters().get("token");
+		return token != null ? validTokens().contains(token) : false;
+	}
+
+	private Set<String> validTokens() {
+		if(lazyValidTokens == null) {
+			lazyValidTokens = Collections.singleton(vault().getSecret(TOKEN_KEY, true));
+		}
+		return lazyValidTokens;
+	}
+
+	private HttpResponseMessage createAvatarResponse(HttpRequestMessage<Optional<String>> request, String id, boolean obfuscated) throws IOException {
+		byte[] avatar = graph(obfuscated).avatar(id);
 		String myETag = String.valueOf(Arrays.hashCode(avatar));		
 		String theirETag = ignoreKeyCase(request.getHeaders()).get("If-None-Match");
 		boolean sameEtag = Objects.equals(myETag, theirETag);
@@ -130,10 +142,10 @@ public class FunctionalOrgEndpoint {
 		return lowMap;
 	}
 
-	private HttpResponseMessage createTeamResponse(HttpRequestMessage<Optional<String>> request, ExecutionContext context, StringTree team)
+	private HttpResponseMessage createTeamResponse(HttpRequestMessage<Optional<String>> request, ExecutionContext context, StringTree team, boolean obfuscated)
 			throws JsonProcessingException {
 	
-		final Map<String, Object> body = graph().loadTeam(team.getProperty("id"), getRoles(request));
+		final Map<String, Object> body = graph(obfuscated).loadTeam(team.getProperty("id"), getRoles(request));
 		body.put("name", team.getName());
 		body.put("url", format("%s/%s", getPath(request),team.getName()));
 		return createJSONResponse(request, body);

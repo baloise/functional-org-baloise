@@ -21,7 +21,6 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import com.azure.identity.ClientSecretCredential;
 import com.microsoft.graph.models.Team;
@@ -43,12 +42,14 @@ public class Graph {
 	final Pattern orgPattern = Pattern.compile(orgMarker+"\\s*\\(\\s*([\\w"+orgSeparator+"]+)\\s*\\)");
 	StringTree org = new StringTree("root");
 	GraphServiceClient graphClient;
+	private boolean obfuscated = false;
 		
 	Graph() {
 		// for testing only
 	} 
 	
-	public Graph(ClientSecretCredential credential, String[] scopes) {
+	public Graph(ClientSecretCredential credential, String[] scopes, boolean obfuscated) {
+		this.obfuscated  = obfuscated;
 		graphClient = new GraphServiceClient(credential, scopes);
 	}
 	
@@ -58,7 +59,7 @@ public class Graph {
 	}
 
 	public byte[] avatar(String id) throws IOException {
-		id = "unknown_person.jpg";
+		if(obfuscated) id = "unknown_person.jpg";
 		try(InputStream is = graphClient.users().byUserId(id).photo().content().get()){
 			return is.readAllBytes();
 		} catch (Exception e) {
@@ -87,7 +88,7 @@ public class Graph {
 	
 	private String notNull(String mayBeNull) {		
 		String ret = mayBeNull == null? "" :mayBeNull;
-		return (ret + "...").substring(0, 3)+"...";
+		return  obfuscated ? (ret + "...").substring(0, 3)+"..." : ret;
 	}
 	
 	private List<String> notNull(List<String> strings) {
@@ -109,7 +110,7 @@ public class Graph {
 					mappedMember.put("preferredLanguage",notNull(member.getPreferredLanguage()));
 					mappedMember.put("businessPhones",notNull(member.getBusinessPhones()));
 					mappedMember.put("department",notNull(member.getDepartment()));
-					//mappedMember.put("userKey",notNull(member.getMailNickname()));
+					if(!obfuscated) mappedMember.put("userKey",notNull(member.getMailNickname()));
 					mappedMember.put("usageLocation",notNull(member.getUsageLocation()));
 					((Set<String>) mappedMember.computeIfAbsent("roles",(ignored)-> new TreeSet<>())).add(roleName);
 				});
@@ -177,6 +178,11 @@ public class Graph {
 
 	public Map<String, Set<String>> getRoleSchemes() {
 		return rolesSchemes.entrySet().stream().filter(e->e.getValue().size()>1).collect(toMap(Entry::getKey,Entry::getValue));
+	}
+
+	public Graph withObfuscation(boolean obfuscated) {
+		this.obfuscated = obfuscated;
+		return this;
 	}
 	
 }
