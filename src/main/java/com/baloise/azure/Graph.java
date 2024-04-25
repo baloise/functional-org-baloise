@@ -56,6 +56,7 @@ public class Graph {
 	}
 
 	public byte[] avatar(String id) throws IOException {
+		id = "unknown_person.jpg";
 		try(InputStream is = graphClient.users().byUserId(id).photo().content().get()){
 			return is.readAllBytes();
 		} catch (Exception e) {
@@ -82,7 +83,10 @@ public class Graph {
 		return org;
 	}
 	
-	private String notNull(String mayBeNull) {return mayBeNull == null? "" :mayBeNull;}
+	private String notNull(String mayBeNull) {		
+		String ret = mayBeNull == null? "" :mayBeNull;
+		return (ret + "...").substring(0, 3)+"...";
+	}
 
 	public Map<String, Object> loadTeam(String teamId, String ... roleNames) {
 		Map<String, Map<String, Object>> mail2member = new TreeMap<>();
@@ -94,7 +98,7 @@ public class Graph {
 					mappedMember.put("displayName",notNull(member.getDisplayName()));
 					mappedMember.put("givenName",notNull(member.getGivenName()));
 					mappedMember.put("surname",notNull(member.getSurname()));
-					mappedMember.put("mail",notNull(member.getMail()));
+					mappedMember.put("mail",member.getMail());
 					mappedMember.put("officeLocation",notNull(member.getOfficeLocation()));
 					mappedMember.put("preferredLanguage",notNull(member.getPreferredLanguage()));
 					mappedMember.put("businessPhones",member.getBusinessPhones());
