@@ -109,7 +109,7 @@ public class Graph {
 					mappedMember.put("preferredLanguage",notNull(member.getPreferredLanguage()));
 					mappedMember.put("businessPhones",notNull(member.getBusinessPhones()));
 					mappedMember.put("department",notNull(member.getDepartment()));
-					mappedMember.put("userKey",notNull(member.getMailNickname()));
+					//mappedMember.put("userKey",notNull(member.getMailNickname()));
 					mappedMember.put("usageLocation",notNull(member.getUsageLocation()));
 					((Set<String>) mappedMember.computeIfAbsent("roles",(ignored)-> new TreeSet<>())).add(roleName);
 				});
@@ -133,7 +133,7 @@ public class Graph {
 					"businessPhones",
 					"department",
 					"employeeId",
-					"mailNickname",
+					//"mailNickname",
 					"usageLocation",
 					"givenName",
 					"surname"
