@@ -5,6 +5,7 @@ import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.Map.of;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
@@ -20,6 +21,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.azure.identity.ClientSecretCredential;
 import com.microsoft.graph.models.Team;
@@ -87,6 +89,10 @@ public class Graph {
 		String ret = mayBeNull == null? "" :mayBeNull;
 		return (ret + "...").substring(0, 3)+"...";
 	}
+	
+	private List<String> notNull(List<String> strings) {
+		return strings.stream().map(this::notNull).collect(toList());
+	}
 
 	public Map<String, Object> loadTeam(String teamId, String ... roleNames) {
 		Map<String, Map<String, Object>> mail2member = new TreeMap<>();
@@ -101,7 +107,7 @@ public class Graph {
 					mappedMember.put("mail",member.getMail());
 					mappedMember.put("officeLocation",notNull(member.getOfficeLocation()));
 					mappedMember.put("preferredLanguage",notNull(member.getPreferredLanguage()));
-					mappedMember.put("businessPhones",member.getBusinessPhones());
+					mappedMember.put("businessPhones",notNull(member.getBusinessPhones()));
 					mappedMember.put("department",notNull(member.getDepartment()));
 					mappedMember.put("userKey",notNull(member.getMailNickname()));
 					mappedMember.put("usageLocation",notNull(member.getUsageLocation()));
@@ -112,6 +118,7 @@ public class Graph {
 		return new TreeMap<>(of("members", mail2member.values()));
 	}
 	
+
 	private List<User> map(List<TeamworkTagMember> members) {
 		return graphClient.users().get((requestConfiguration)->{
 			requestConfiguration.queryParameters.filter = format(
